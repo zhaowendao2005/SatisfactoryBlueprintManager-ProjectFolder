@@ -13,6 +13,7 @@
     "build:electron:debug:no-lint": "cd SatisfactoryBlueprintManager && npm run build:electron:debug:no-lint",
     "install": "cd SatisfactoryBlueprintManager && npm install",
     "create:summary": "node Script/create-summary.js",
+  
     "postinstall": "cd SatisfactoryBlueprintManager && npm run postinstall"
   }
 }
