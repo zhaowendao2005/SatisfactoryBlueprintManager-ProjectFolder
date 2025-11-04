@@ -5,7 +5,21 @@ import {
   createWebHashHistory,
   createWebHistory,
 } from 'vue-router';
-import routes from './routes';
+import type { RouteRecordRaw } from 'vue-router';
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    component: () => import('@gui/pages/Home/Index.vue'),
+  },
+
+  // Always leave this as last one,
+  // but you can also remove it
+  {
+    path: '/:catchAll(.*)*',
+    component: () => import('@gui/pages/Error/Index.vue'),
+  },
+];
 
 /*
  * If not building with SSR mode, you can
@@ -35,3 +49,4 @@ export default defineRouter(function (/* { store, ssrContext } */) {
 
   return Router;
 });
+

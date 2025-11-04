@@ -1,3 +1,18 @@
 {
-  "extends": "./.quasar/tsconfig.json"
+  "extends": "./.quasar/tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@gui/*": ["./Frontend/GUI/*"],
+      "@gui/types/*": ["./Frontend/GUI/types/*"],
+      "@gui/pages/*": ["./Frontend/GUI/pages/*"],
+      "@gui/components/*": ["./Frontend/GUI/components/*"],
+      "@gui/stores/*": ["./Frontend/GUI/stores/*"],
+      "@gui/service/*": ["./Frontend/GUI/service/*"],
+      "@router/*": ["./Frontend/router/*"],
+      "@boot/*": ["./Frontend/boot/*"],
+      "@i18n/*": ["./Frontend/i18n/*"],
+      "@types/*": ["./public/types/*"]
+    }
+  }
 }
+

@@ -60,7 +60,22 @@ export default defineConfig((ctx) => {
       // polyfillModulePreload: true,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      extendViteConf(viteConf) {
+        viteConf.resolve = viteConf.resolve || {};
+        viteConf.resolve.alias = {
+          ...viteConf.resolve.alias,
+          '@gui': fileURLToPath(new URL('./Frontend/GUI', import.meta.url)),
+          '@gui/types': fileURLToPath(new URL('./Frontend/GUI/types', import.meta.url)),
+          '@gui/pages': fileURLToPath(new URL('./Frontend/GUI/pages', import.meta.url)),
+          '@gui/components': fileURLToPath(new URL('./Frontend/GUI/components', import.meta.url)),
+          '@gui/stores': fileURLToPath(new URL('./Frontend/GUI/stores', import.meta.url)),
+          '@gui/service': fileURLToPath(new URL('./Frontend/GUI/service', import.meta.url)),
+          '@router': fileURLToPath(new URL('./Frontend/router', import.meta.url)),
+          '@boot': fileURLToPath(new URL('./Frontend/boot', import.meta.url)),
+          '@i18n': fileURLToPath(new URL('./Frontend/i18n', import.meta.url)),
+          '@types': fileURLToPath(new URL('./public/types', import.meta.url)),
+        };
+      },
       // viteVuePluginOptions: {},
 
       vitePlugins: [
@@ -77,7 +92,7 @@ export default defineConfig((ctx) => {
             ssr: ctx.modeName === 'ssr',
 
             // you need to set i18n resource including paths !
-            include: [fileURLToPath(new URL('./src/i18n', import.meta.url))],
+            include: [fileURLToPath(new URL('./Frontend/i18n', import.meta.url))],
           },
         ],
 
@@ -85,8 +100,8 @@ export default defineConfig((ctx) => {
           'vite-plugin-checker',
           {
             vueTsc: true,
-            eslint: {
-              lintCommand: 'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
+            eslint: process.env.SKIP_LINT === 'true' ? false : {
+              lintCommand: 'eslint -c ./eslint.config.js "./Frontend*/**/*.{ts,js,mjs,cjs,vue}"',
               useFlatConfig: true,
             },
           },
@@ -124,17 +139,17 @@ export default defineConfig((ctx) => {
     animations: [],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#sourcefiles
-    // sourceFiles: {
-    //   rootComponent: 'src/App.vue',
-    //   router: 'src/router/index',
-    //   store: 'src/store/index',
-    //   pwaRegisterServiceWorker: 'src-pwa/register-service-worker',
-    //   pwaServiceWorker: 'src-pwa/custom-service-worker',
-    //   pwaManifestFile: 'src-pwa/manifest.json',
-    //   electronMain: 'src-electron/electron-main',
-    //   electronPreload: 'src-electron/electron-preload'
-    //   bexManifestFile: 'src-bex/manifest.json
-    // },
+    sourceFiles: {
+      rootComponent: 'Frontend/App.vue',
+      router: 'Frontend/router/index',
+      store: 'Frontend/GUI/stores/index',
+      // pwaRegisterServiceWorker: 'src-pwa/register-service-worker',
+      // pwaServiceWorker: 'src-pwa/custom-service-worker',
+      // pwaManifestFile: 'src-pwa/manifest.json',
+      // electronMain: 'src-electron/electron-main',
+      // electronPreload: 'src-electron/electron-preload'
+      // bexManifestFile: 'src-bex/manifest.json
+    },
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-ssr/configuring-ssr
     ssr: {
