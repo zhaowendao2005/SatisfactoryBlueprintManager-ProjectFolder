@@ -15,7 +15,7 @@ export default defineConfig((ctx) => {
     boot: ['i18n', 'axios'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
-    css: ['app.scss'],
+    css: ['Frontend/css/app.scss'],
 
     // https://github.com/quasarframework/quasar/tree/dev/extras
     extras: [
@@ -74,6 +74,8 @@ export default defineConfig((ctx) => {
           '@boot': fileURLToPath(new URL('./Frontend/boot', import.meta.url)),
           '@i18n': fileURLToPath(new URL('./Frontend/i18n', import.meta.url)),
           '@types': fileURLToPath(new URL('./public/types', import.meta.url)),
+          // 兼容旧的 src 路径引用（用于 Quasar 内部生成的文件）
+          'src/css': fileURLToPath(new URL('./Frontend/css', import.meta.url)),
         };
       },
       // viteVuePluginOptions: {},

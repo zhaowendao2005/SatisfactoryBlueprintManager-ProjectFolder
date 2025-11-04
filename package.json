@@ -1,0 +1,19 @@
+{
+  "scripts": {
+    "lint": "cd SatisfactoryBlueprintManager && npm run lint",
+    "format": "cd SatisfactoryBlueprintManager && npm run format",
+    "test": "cd SatisfactoryBlueprintManager && npm run test",
+    "dev": "cd SatisfactoryBlueprintManager && npm run dev",
+    "dev:no-lint": "cd SatisfactoryBlueprintManager && npm run dev:no-lint",
+    "dev:electron": "cd SatisfactoryBlueprintManager && npm run dev:electron",
+    "dev:electron:no-lint": "cd SatisfactoryBlueprintManager && npm run dev:electron:no-lint",
+    "build": "cd SatisfactoryBlueprintManager && npm run build",
+    "build:electron": "cd SatisfactoryBlueprintManager && npm run build:electron",
+    "build:electron:no-lint": "cd SatisfactoryBlueprintManager && npm run build:electron:no-lint",
+    "build:electron:debug:no-lint": "cd SatisfactoryBlueprintManager && npm run build:electron:debug:no-lint",
+    "install": "cd SatisfactoryBlueprintManager && npm install",
+    "create:summary": "node Script/create-summary.js",
+    "postinstall": "cd SatisfactoryBlueprintManager && npm run postinstall"
+  }
+}
+
