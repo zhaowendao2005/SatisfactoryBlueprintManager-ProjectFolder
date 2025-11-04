@@ -16,7 +16,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'welcome',
         name: 'welcome',
-        component: () => import('@gui/pages/Welcome/Index.vue'),
+        component: () => import('@gui/pages/MainWindow/MainPanel/Welcome/Index.vue'),
       },
       {
         path: 'blueprint',
