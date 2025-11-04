@@ -1,65 +1,51 @@
-import { app, BrowserWindow } from 'electron';
-import path from 'path';
-import os from 'os';
-import { fileURLToPath } from 'url'
+/**
+ * Electron 主进程入口
+ * 职责：应用生命周期管理、模块组织
+ */
+import { app, BrowserWindow } from 'electron'
+import os from 'os'
+import { WindowService } from './Service/Window'
+import { WindowHandler } from './Ipc/WindowHandler'
 
-// needed in case process is undefined under Linux
-const platform = process.platform || os.platform();
+const platform = process.platform || os.platform()
 
-const currentDir = fileURLToPath(new URL('.', import.meta.url));
+let mainWindow: BrowserWindow | undefined
 
-let mainWindow: BrowserWindow | undefined;
+/**
+ * 创建主窗口
+ */
+async function createWindow(): Promise<void> {
+  // 通过 WindowService 创建主窗口
+  mainWindow = await WindowService.createMainWindow()
 
-async function createWindow() {
-  /**
-   * Initial window options
-   */
-  mainWindow = new BrowserWindow({
-    icon: path.resolve(currentDir, 'icons/icon.png'), // tray icon
-    width: 1000,
-    height: 600,
-    useContentSize: true,
-    webPreferences: {
-      contextIsolation: true,
-      // More info: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/electron-preload-script
-      preload: path.resolve(
-        currentDir,
-        path.join(process.env.QUASAR_ELECTRON_PRELOAD_FOLDER, 'electron-preload' + process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION)
-      ),
-    },
-  });
+  // 注册 IPC 处理器
+  WindowHandler.register(mainWindow)
 
-  if (process.env.DEV) {
-    await mainWindow.loadURL(process.env.APP_URL);
-  } else {
-    await mainWindow.loadFile('index.html');
-  }
-
-  if (process.env.DEBUGGING) {
-    // if on DEV or Production with debug enabled
-    mainWindow.webContents.openDevTools();
-  } else {
-    // we're on production; no access to devtools pls
-    mainWindow.webContents.on('devtools-opened', () => {
-      mainWindow?.webContents.closeDevTools();
-    });
-  }
-
+  // 窗口关闭清理
   mainWindow.on('closed', () => {
-    mainWindow = undefined;
-  });
+    mainWindow = undefined
+  })
 }
 
-void app.whenReady().then(createWindow);
+/**
+ * 应用就绪时创建窗口
+ */
+void app.whenReady().then(createWindow)
 
+/**
+ * 所有窗口关闭时退出应用（macOS 除外）
+ */
 app.on('window-all-closed', () => {
   if (platform !== 'darwin') {
-    app.quit();
+    app.quit()
   }
-});
+})
 
+/**
+ * macOS 激活时重新创建窗口
+ */
 app.on('activate', () => {
   if (mainWindow === undefined) {
-    void createWindow();
+    void createWindow()
   }
-});
+})

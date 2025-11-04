@@ -1,4 +1,4 @@
-import { defineRouter } from '#q-app/wrappers';
+import { route } from 'quasar/wrappers';
 import {
   createMemoryHistory,
   createRouter,
@@ -10,7 +10,20 @@ import type { RouteRecordRaw } from 'vue-router';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    component: () => import('@gui/pages/Home/Index.vue'),
+    component: () => import('@gui/pages/MainWindow/layout.vue'),
+    redirect: '/welcome',
+    children: [
+      {
+        path: 'welcome',
+        name: 'welcome',
+        component: () => import('@gui/pages/Welcome/Index.vue'),
+      },
+      {
+        path: 'blueprint',
+        name: 'blueprint',
+        component: () => import('@gui/pages/Error/Index.vue'), // 临时使用 Error 页面，后续实现 Blueprint 页面
+      },
+    ],
   },
 
   // Always leave this as last one,
@@ -30,7 +43,7 @@ const routes: RouteRecordRaw[] = [
  * with the Router instance.
  */
 
-export default defineRouter(function (/* { store, ssrContext } */) {
+export default route(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
     ? createMemoryHistory
     : process.env.VUE_ROUTER_MODE === 'history'

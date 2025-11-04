@@ -1,10 +1,14 @@
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file
 
-import { defineConfig } from '#q-app/wrappers';
+import { configure } from 'quasar/wrappers';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import AutoImport from 'unplugin-auto-import/vite';
+import Components from 'unplugin-vue-components/vite';
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 
-export default defineConfig((ctx) => {
+export default configure((ctx) => {
   return {
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
@@ -12,10 +16,11 @@ export default defineConfig((ctx) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['i18n', 'axios'],
+    boot: ['i18n', 'axios', 'element-plus'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
-    css: ['Frontend/css/app.scss'],
+    // CSS 文件现在直接在 App.vue 中通过相对路径导入
+    // css: [],
 
     // https://github.com/quasarframework/quasar/tree/dev/extras
     extras: [
@@ -62,21 +67,50 @@ export default defineConfig((ctx) => {
 
       extendViteConf(viteConf) {
         viteConf.resolve = viteConf.resolve || {};
-        viteConf.resolve.alias = {
-          ...viteConf.resolve.alias,
-          '@gui': fileURLToPath(new URL('./Frontend/GUI', import.meta.url)),
-          '@gui/types': fileURLToPath(new URL('./Frontend/GUI/types', import.meta.url)),
-          '@gui/pages': fileURLToPath(new URL('./Frontend/GUI/pages', import.meta.url)),
-          '@gui/components': fileURLToPath(new URL('./Frontend/GUI/components', import.meta.url)),
-          '@gui/stores': fileURLToPath(new URL('./Frontend/GUI/stores', import.meta.url)),
-          '@gui/service': fileURLToPath(new URL('./Frontend/GUI/service', import.meta.url)),
-          '@router': fileURLToPath(new URL('./Frontend/router', import.meta.url)),
-          '@boot': fileURLToPath(new URL('./Frontend/boot', import.meta.url)),
-          '@i18n': fileURLToPath(new URL('./Frontend/i18n', import.meta.url)),
-          '@types': fileURLToPath(new URL('./public/types', import.meta.url)),
-          // 兼容旧的 src 路径引用（用于 Quasar 内部生成的文件）
-          'src/css': fileURLToPath(new URL('./Frontend/css', import.meta.url)),
-        };
+        // 使用数组并控制顺序，确保更具体规则优先（参考 Nimbria 的实现）
+        const alias = [];
+        alias.push(
+          // 基础别名（保持 Quasar 模板兼容性，带 src/ 前缀）
+          { find: 'src/boot', replacement: path.resolve(__dirname, 'Frontend/boot') },
+          { find: 'src/stores', replacement: path.resolve(__dirname, 'Frontend/GUI/stores') },
+          { find: 'src', replacement: path.resolve(__dirname, 'Frontend') },
+          { find: 'app/src', replacement: path.resolve(__dirname, 'Frontend') },
+          { find: 'app', replacement: path.resolve(__dirname, '.') },
+          
+          // Quasar 标准别名（不带前缀，Quasar 生成的文件会使用这些）
+          { find: 'boot', replacement: path.resolve(__dirname, 'Frontend/boot') },
+          { find: 'layouts', replacement: path.resolve(__dirname, 'Frontend/GUI/layouts') },
+          { find: 'pages', replacement: path.resolve(__dirname, 'Frontend/GUI/pages') },
+          { find: 'components', replacement: path.resolve(__dirname, 'Frontend/GUI/components') },
+          { find: 'stores', replacement: path.resolve(__dirname, 'Frontend/GUI/stores') },
+          
+          // GUI 层别名（使用 @ 前缀）
+          { find: '@gui', replacement: path.resolve(__dirname, 'Frontend/GUI') },
+          { find: '@gui/types', replacement: path.resolve(__dirname, 'Frontend/GUI/types') },
+          { find: '@gui/pages', replacement: path.resolve(__dirname, 'Frontend/GUI/pages') },
+          { find: '@gui/components', replacement: path.resolve(__dirname, 'Frontend/GUI/components') },
+          { find: '@gui/stores', replacement: path.resolve(__dirname, 'Frontend/GUI/stores') },
+          { find: '@gui/service', replacement: path.resolve(__dirname, 'Frontend/GUI/service') },
+          
+          // 核心功能别名（使用 @ 前缀）
+          { find: '@router', replacement: path.resolve(__dirname, 'Frontend/router') },
+          { find: '@boot', replacement: path.resolve(__dirname, 'Frontend/boot') },
+          { find: '@i18n', replacement: path.resolve(__dirname, 'Frontend/i18n') },
+          { find: '@types', replacement: path.resolve(__dirname, 'public/types') },
+          { find: /^@types\//, replacement: path.resolve(__dirname, 'public/types/') }
+        );
+        viteConf.resolve.alias = alias;
+
+        // Element Plus 自动导入配置
+        viteConf.plugins = viteConf.plugins || [];
+        viteConf.plugins.push(
+          AutoImport({
+            resolvers: [ElementPlusResolver()],
+          }),
+          Components({
+            resolvers: [ElementPlusResolver()],
+          })
+        );
       },
       // viteVuePluginOptions: {},
 
@@ -208,6 +242,7 @@ export default defineConfig((ctx) => {
       // extendPackageJson (json) {},
 
       // Electron preload scripts (if any) from /src-electron, WITHOUT file extension
+      // 注意：路径相对于 src-electron，不要包含扩展名
       preloadScripts: ['electron-preload'],
 
       // specify the debugging port to use for the Electron app when running in development mode
