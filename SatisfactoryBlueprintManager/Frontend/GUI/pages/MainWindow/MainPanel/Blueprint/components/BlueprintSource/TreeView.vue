@@ -2,6 +2,7 @@
   <div class="source-tree-view">
     <el-tree
       ref="treeRef"
+      :key="treeKey"
       :props="treeProps"
       :lazy="true"
       :load="loadNode"
@@ -18,6 +19,7 @@
           @activate="handleActivate"
           @deactivate="handleDeactivate"
           @show-details="handleShowDetails"
+          @delete="handleDelete"
         />
       </template>
     </el-tree>
@@ -33,13 +35,26 @@ import { useBlueprintSourceStore } from '../../stores/BlueprintSource'
 
 const emit = defineEmits<{
   (e: 'show-details', nodeId: string): void
+  (e: 'delete', nodeId: string): void
 }>()
 
 const store = useBlueprintSourceStore()
 const treeRef = ref<InstanceType<typeof ElTree>>()
+const treeKey = ref(0) // 用于强制重新渲染树
 
 const expandedKeys = computed(() => store.expandedKeys)
 const checkedKeys = computed(() => store.checkedKeys)
+
+// 暴露刷新方法给父组件
+const refresh = async () => {
+  await store.loadRootNodes()
+  // 通过改变 key 强制重新渲染树
+  treeKey.value++
+}
+
+defineExpose({
+  refresh,
+})
 
 const treeProps = {
   children: 'children',
@@ -54,16 +69,18 @@ const loadNode = async (
   node: { level: number; data: unknown },
   resolve: (data: BlueprintNode[]) => void
 ) => {
-  const nodeData = node.data as BlueprintNode
   try {
     if (node.level === 0) {
       // 加载根节点
+      // 确保 treeData 已加载
       if (store.treeData.length === 0) {
         await store.loadRootNodes()
       }
+      // 直接返回当前的 treeData
       resolve(store.treeData)
     } else {
       // 懒加载子节点
+      const nodeData = node.data as BlueprintNode
       const children = await store.loadChildren(nodeData.id)
       resolve(children)
     }
@@ -102,6 +119,10 @@ const handleDeactivate = async (nodeId: string) => {
 
 const handleShowDetails = (nodeId: string) => {
   emit('show-details', nodeId)
+}
+
+const handleDelete = (nodeId: string) => {
+  emit('delete', nodeId)
 }
 </script>
 

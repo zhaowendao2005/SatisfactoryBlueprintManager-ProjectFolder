@@ -184,6 +184,19 @@ export const useBlueprintSourceStore = defineStore('blueprintSource', {
     },
 
     /**
+     * 删除蓝图源
+     */
+    async removeSource(sourcePath: string): Promise<void> {
+      try {
+        await blueprintSourceDatasource.removeSource(sourcePath)
+        await this.loadRootNodes() // 重新加载
+      } catch (error) {
+        console.error('Failed to remove source:', error)
+        throw error
+      }
+    },
+
+    /**
      * 查找节点（递归）
      */
     findNodeById(nodeId: string): BlueprintNode | undefined {

@@ -65,4 +65,24 @@ export interface IBlueprintSourceDatasource {
    * @param sourceId 源 id，不传则刷新所有
    */
   refresh(sourceId?: string): Promise<void>
+
+  /**
+   * 选择目录并添加源
+   * @注意事项 包含完整流程：选择 → 扫描 → 创建配置 → 保存
+   * @throws {Error} 用户取消、目录无效、扫描失败等
+   */
+  selectAndAddSource(): Promise<BlueprintSource>
+
+  /**
+   * 扫描源目录（用于刷新）
+   * @param sourceId 源 id
+   * @returns Promise<BlueprintNode[]> 更新后的根节点
+   */
+  rescanSource(sourceId: string): Promise<BlueprintNode[]>
+
+  /**
+   * 删除蓝图源
+   * @param sourcePath 源路径
+   */
+  removeSource(sourcePath: string): Promise<void>
 }

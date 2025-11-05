@@ -1,6 +1,12 @@
 <template>
   <div class="active-blueprint">
+    <!-- 标题栏 -->
+    <div class="header">
+      <h3 class="title">已激活的蓝图</h3>
+    </div>
+    <!-- 视图切换器 -->
     <ViewSwitcher />
+    <!-- 内容区域 -->
     <TreeView
       v-if="currentView === 'tree'"
       @create-group="handleCreateGroup"
@@ -45,6 +51,21 @@ const handleShowDetails = (nodeId: string) => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+
+  .header {
+    height: 56px;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #e0e0e0;
+
+    .title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+  }
 
   .icon-view-placeholder {
     flex: 1;

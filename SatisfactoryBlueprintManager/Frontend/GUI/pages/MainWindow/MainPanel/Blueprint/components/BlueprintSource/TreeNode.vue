@@ -35,7 +35,8 @@
     </div>
 
     <!-- 工具箱 -->
-    <div class="node-toolbox">
+    <div class="node-toolbox" @click.stop>
+      <!-- 蓝图节点的激活按钮 -->
       <el-tooltip
         v-if="data.type === 'blueprint'"
         :content="data.isActivated ? '取消激活' : '激活'"
@@ -48,6 +49,20 @@
           @click="handleToggleActivate"
         />
       </el-tooltip>
+      <!-- 目录节点（根节点）的删除按钮 -->
+      <el-tooltip
+        v-if="data.type === 'directory' && isRootNode"
+        content="删除源"
+        placement="top"
+      >
+        <el-button
+          :icon="Delete"
+          text
+          type="danger"
+          @click="handleDelete"
+        />
+      </el-tooltip>
+      <!-- 详细信息按钮 -->
       <el-tooltip content="详细信息" placement="top">
         <el-button
           :icon="InfoFilled"
@@ -61,7 +76,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Folder, Document, CircleCheck, CircleClose, InfoFilled } from '@element-plus/icons-vue'
+import { Folder, Document, CircleCheck, CircleClose, InfoFilled, Delete } from '@element-plus/icons-vue'
 import type { BlueprintNode } from '../../types'
 
 interface Props {
@@ -75,7 +90,13 @@ const emit = defineEmits<{
   (e: 'activate', nodeId: string): void
   (e: 'deactivate', nodeId: string): void
   (e: 'show-details', nodeId: string): void
+  (e: 'delete', nodeId: string): void
 }>()
+
+// 判断是否为根节点（懒加载模式下根节点 level === 1）
+const isRootNode = computed(() => {
+  return props.data.type === 'directory' && props.node.level === 1
+})
 
 const iconClass = computed(() => {
   return props.data.type === 'directory' ? 'icon-directory' : 'icon-blueprint'
@@ -102,6 +123,10 @@ const handleToggleActivate = () => {
 
 const handleShowDetails = () => {
   emit('show-details', props.data.id)
+}
+
+const handleDelete = () => {
+  emit('delete', props.data.id)
 }
 </script>
 
