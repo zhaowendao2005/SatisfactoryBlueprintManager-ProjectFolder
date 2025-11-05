@@ -70,13 +70,12 @@ export interface SyncLibraryToGameParams {
 }
 
 /**
- * 游戏→库同步参数
+ * 游戏→库同步参数（简化版：只处理新增蓝图）
  */
 export interface SyncGameToLibraryParams {
   sourcePath: string                 // 游戏存档蓝图目录
-  mode: GameToLibraryMode            // 同步策略
-  index: BlueprintIndex              // 蓝图索引
-  fallbackPath: string               // 兜底目录（找不到映射时使用）
+  targetPath: string                 // 目标目录（蓝图源路径或用户自定义路径）
+  blueprints: BlueprintPair[]        // 要同步的新增蓝图列表
 }
 
 /**
@@ -124,5 +123,13 @@ export interface UserChoice {
   action: 'select' | 'skip' | 'fallback'  // 用户选择的操作
   selectedPath?: string              // 选中的路径（仅当 action === 'select' 时）
   applyToAll: boolean                // 是否应用到所有重名蓝图
+}
+
+/**
+ * 检测新增蓝图结果
+ */
+export interface NewBlueprintsResult {
+  newBlueprints: BlueprintPair[]     // 新增的蓝图列表（不在索引中的）
+  totalBlueprints: number             // 游戏目录中的总蓝图数
 }
 

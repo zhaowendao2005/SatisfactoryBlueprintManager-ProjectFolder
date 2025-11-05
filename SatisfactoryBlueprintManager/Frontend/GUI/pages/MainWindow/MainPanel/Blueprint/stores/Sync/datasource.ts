@@ -9,6 +9,7 @@ import type {
   BlueprintIndex,
   FileLockStatus,
   BlueprintSource,
+  NewBlueprintsResult,
 } from 'src/../../public/types/sync'
 
 /**
@@ -93,7 +94,21 @@ export class SyncDatasource {
   }
 
   /**
-   * 游戏→库同步
+   * 检测新增蓝图
+   */
+  async detectNewBlueprints(gamePath: string, index: BlueprintIndex): Promise<NewBlueprintsResult> {
+    try {
+      // 序列化 index
+      const serializableIndex = JSON.parse(JSON.stringify(index))
+      return await this.getSyncAPI().detectNewBlueprints(gamePath, serializableIndex)
+    } catch (error) {
+      console.error('Failed to detect new blueprints:', error)
+      throw new Error(`检测新增蓝图失败：${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  /**
+   * 游戏→库同步（简化版：只处理新增蓝图）
    */
   async syncGameToLibrary(params: SyncGameToLibraryParams): Promise<SyncResult> {
     try {
@@ -101,9 +116,8 @@ export class SyncDatasource {
       const serializableParams = JSON.parse(
         JSON.stringify({
           sourcePath: params.sourcePath,
-          mode: params.mode,
-          index: params.index,
-          fallbackPath: params.fallbackPath,
+          targetPath: params.targetPath,
+          blueprints: params.blueprints,
         })
       )
       return await this.getSyncAPI().syncGameToLibrary(serializableParams)

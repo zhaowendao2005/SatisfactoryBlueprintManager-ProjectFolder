@@ -10,6 +10,7 @@ import type {
   BlueprintIndex,
   FileLockStatus,
   BlueprintSource,
+  NewBlueprintsResult,
 } from '../../public/types/sync'
 import { SyncService } from '../Service/Sync/sync-service'
 import { BlueprintIndexer } from '../Service/Sync/blueprint-indexer'
@@ -100,7 +101,22 @@ export function registerSyncHandlers(): void {
   )
 
   /**
-   * 游戏→库同步
+   * 检测新增蓝图
+   */
+  ipcMain.handle(
+    'sync:detectNewBlueprints',
+    async (_event, gamePath: string, index: BlueprintIndex): Promise<NewBlueprintsResult> => {
+      try {
+        return await SyncService.detectNewBlueprints(gamePath, index)
+      } catch (error) {
+        console.error('Failed to detect new blueprints:', error)
+        throw error
+      }
+    }
+  )
+
+  /**
+   * 游戏→库同步（简化版：只处理新增蓝图）
    */
   ipcMain.handle(
     'sync:gameToLibrary',

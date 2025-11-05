@@ -108,6 +108,7 @@ import type {
   BlueprintIndex,
   FileLockStatus,
   BlueprintSource,
+  NewBlueprintsResult,
 } from '../sync'
 
 export interface ElectronSyncAPI {
@@ -124,10 +125,13 @@ export interface ElectronSyncAPI {
   /** 构建蓝图索引 */
   buildIndex(sources: BlueprintSource[]): Promise<BlueprintIndex>
 
+  /** 检测新增蓝图 */
+  detectNewBlueprints(gamePath: string, index: BlueprintIndex): Promise<NewBlueprintsResult>
+
   /** 库→游戏同步 */
   syncLibraryToGame(params: SyncLibraryToGameParams): Promise<SyncResult>
 
-  /** 游戏→库同步 */
+  /** 游戏→库同步（简化版：只处理新增蓝图） */
   syncGameToLibrary(params: SyncGameToLibraryParams): Promise<SyncResult>
 
   /** 检查文件占用 */

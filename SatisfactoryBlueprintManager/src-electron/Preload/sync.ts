@@ -8,6 +8,7 @@ import type {
   SyncResult,
   BlueprintIndex,
   FileLockStatus,
+  NewBlueprintsResult,
 } from '../../public/types/sync'
 import type { BlueprintSource } from '../../public/types/blueprint'
 
@@ -40,7 +41,13 @@ export const exposeSyncAPI = (): void => {
       ipcRenderer.invoke('sync:libraryToGame', params),
 
     /**
-     * 游戏→库同步
+     * 检测新增蓝图
+     */
+    detectNewBlueprints: (gamePath: string, index: BlueprintIndex): Promise<NewBlueprintsResult> =>
+      ipcRenderer.invoke('sync:detectNewBlueprints', gamePath, index),
+
+    /**
+     * 游戏→库同步（简化版：只处理新增蓝图）
      */
     syncGameToLibrary: (params: SyncGameToLibraryParams): Promise<SyncResult> =>
       ipcRenderer.invoke('sync:gameToLibrary', params),

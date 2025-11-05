@@ -11,6 +11,7 @@ import type {
   BlueprintPair,
   FileLockStatus,
   BlueprintIndex,
+  NewBlueprintsResult,
 } from '../../../public/types/sync'
 import type { ActiveBlueprintNode } from '../../../public/types/blueprint'
 import { FileOperationService } from './file-operation-service'
@@ -194,7 +195,46 @@ export class SyncService {
   }
 
   /**
-   * 游戏→库同步
+   * 检测新增蓝图（不在索引中的蓝图）
+   * @param gamePath 游戏存档蓝图目录
+   * @param index 蓝图索引
+   * @returns 新增蓝图列表
+   */
+  static async detectNewBlueprints(
+    gamePath: string,
+    index: BlueprintIndex
+  ): Promise<NewBlueprintsResult> {
+    log('=== 开始检测新增蓝图 ===')
+    const normalizedGamePath = PathResolver.normalizePath(gamePath)
+    
+    // 扫描游戏目录中的所有蓝图
+    const allBlueprints = await this.scanGameBlueprints(normalizedGamePath)
+    log('游戏目录蓝图总数', { count: allBlueprints.length })
+    
+    // 找出不在索引中的蓝图（新增的）
+    const newBlueprints: BlueprintPair[] = []
+    for (const pair of allBlueprints) {
+      const candidates = BlueprintIndexer.querySource(pair.basename, index)
+      if (candidates.length === 0) {
+        // 不在索引中，是新增的
+        newBlueprints.push(pair)
+        log('发现新增蓝图', { basename: pair.basename })
+      }
+    }
+    
+    log('=== 检测完成 ===', {
+      新增: newBlueprints.length,
+      总数: allBlueprints.length,
+    })
+    
+    return {
+      newBlueprints,
+      totalBlueprints: allBlueprints.length,
+    }
+  }
+
+  /**
+   * 游戏→库同步（简化版：只处理新增蓝图）
    * @param params 同步参数
    * @param signal 取消信号
    * @returns 同步结果
@@ -212,90 +252,42 @@ export class SyncService {
     }
 
     const normalizedSourcePath = PathResolver.normalizePath(params.sourcePath)
+    const normalizedTargetPath = PathResolver.normalizePath(params.targetPath)
 
-    log('=== 开始游戏→库同步 ===')
+    log('=== 开始游戏→库同步（简化版：新增蓝图） ===')
     log('源路径', { sourcePath: normalizedSourcePath })
-    log('同步模式', { mode: params.mode })
-    log('备选路径', { fallbackPath: params.fallbackPath })
+    log('目标路径', { targetPath: normalizedTargetPath })
+    log('蓝图数量', { count: params.blueprints.length })
 
     try {
-      // 步骤1：扫描游戏目录下所有 .sbp 文件
-      log('步骤1：扫描游戏蓝图目录', { path: normalizedSourcePath })
-      const blueprintPairs = await this.scanGameBlueprints(normalizedSourcePath)
-      log('✓ 扫描完成', { count: blueprintPairs.length })
+      // 步骤1：确保目标目录存在
+      log('步骤1：检查/创建目标目录', { path: normalizedTargetPath })
+      await fs.mkdir(normalizedTargetPath, { recursive: true })
+      log('✓ 目标目录就绪')
 
-      // 步骤2：对每个蓝图对进行处理
-      log('步骤2：处理每个蓝图对', { total: blueprintPairs.length })
-      for (const pair of blueprintPairs) {
+      // 步骤2：复制每个新增蓝图
+      log('步骤2：开始复制新增蓝图', { count: params.blueprints.length })
+      for (const pair of params.blueprints) {
         if (signal?.aborted) {
           log('同步被取消')
           break
         }
 
-        log(`\n处理蓝图: ${pair.basename}`, { 
+        log(`处理蓝图: ${pair.basename}`, { 
           sourcePath: pair.sbpPath,
+          targetDir: normalizedTargetPath
         })
 
         try {
-          // 查询索引，找到对应的源路径
-          log('查询索引中的匹配项...')
-          const candidates = BlueprintIndexer.querySource(pair.basename, params.index)
-          log(`找到${candidates.length}个匹配项`, { 
-            candidates: candidates.map(c => c.fullPath)
-          })
+          // 检查源文件是否存在
+          await fs.access(pair.sbpPath)
+          log('✓ 源文件存在')
 
-          let targetPath: string | null = null
-
-          if (candidates.length === 0) {
-            // 找不到映射 → 使用 fallbackPath，文件名前加 4 位哈希
-            log('⚠ 未找到映射，使用备选路径')
-            const hash = this.generateHash4(pair.sbpPath)
-            const fallbackBasename = `${hash}-${pair.basename}`
-            targetPath = path.join(params.fallbackPath, `${fallbackBasename}.sbp`)
-            log('备选路径', { targetPath })
-          } else if (candidates.length === 1) {
-            // 唯一匹配
-            log('✓ 找到唯一匹配')
-            targetPath = candidates[0].fullPath
-          } else {
-            // 多个匹配 → 跳过（UI 层会弹出对话框让用户选择）
-            log('⚠ 找到多个匹配，需要用户选择')
-            result.skipped.push({
-              pair,
-              reason: '多个匹配源，需要用户选择',
-            })
-            continue
-          }
-
-          if (!targetPath) {
-            continue
-          }
-
-          const normalizedTargetPath = PathResolver.normalizePath(targetPath)
-          const targetDir = path.dirname(normalizedTargetPath)
-
-          // 根据 mode 决定是否复制
-          log(`检查同步模式 (${params.mode})...`)
-          const shouldCopy = await this.shouldCopyByMode(
-            pair.sbpPath,
-            normalizedTargetPath,
-            params.mode
-          )
-
-          if (!shouldCopy) {
-            log(`✓ 跳过（${params.mode} 模式下无需更新）`)
-            result.skipped.push({
-              pair,
-              reason: `根据 ${params.mode} 模式，目标已是最新或无需更新`,
-            })
-            continue
-          }
-
-          log('检查目标文件占用状态...')
           // 检查目标文件是否被占用
-          const lockStatus = await this.checkFileLock(normalizedTargetPath)
+          const destSbpPath = path.join(normalizedTargetPath, `${pair.basename}.sbp`)
+          const lockStatus = await this.checkFileLock(destSbpPath)
           if (lockStatus.isLocked) {
-            log('✗ 文件被占用', { path: normalizedTargetPath })
+            log('✗ 目标文件被占用', { path: destSbpPath })
             result.failed.push({
               pair,
               error: '文件被游戏进程占用，请关闭游戏后重试',
@@ -304,26 +296,16 @@ export class SyncService {
           }
 
           // 执行复制
-          log('开始复制文件...')
-          if (params.mode === 'new-version') {
-            // 新版本模式：生成新文件名
-            const timestamp = Date.now()
-            const newBasename = `${pair.basename}.${timestamp}`
-            log('新版本模式', { newBasename })
-            await FileOperationService.copyBlueprintPair(pair.sbpPath, targetDir, {
-              newName: newBasename,
-            })
-            log('✓ 新版本复制成功', { targetPath: path.join(targetDir, `${newBasename}.sbp`) })
-          } else {
-            // 其他模式：覆盖或复制
-            log('普通复制', { targetDir })
-            await FileOperationService.copyBlueprintPair(pair.sbpPath, targetDir)
-            log('✓ 复制成功', { targetPath: normalizedTargetPath })
-          }
+          log('开始复制蓝图文件...')
+          await FileOperationService.copyBlueprintPair(pair.sbpPath, normalizedTargetPath)
+          log('✓ 蓝图复制成功', { destPath: destSbpPath })
 
           result.succeeded.push(pair)
         } catch (error) {
-          log('✗ 处理失败', { error: error instanceof Error ? error.message : String(error) })
+          log('✗ 蓝图复制失败', { 
+            error: error instanceof Error ? error.message : String(error),
+            sourcePath: pair.sbpPath
+          })
           result.failed.push({
             pair,
             error: error instanceof Error ? error.message : String(error),
@@ -344,50 +326,6 @@ export class SyncService {
     }
 
     return result
-  }
-
-  /**
-   * 根据同步模式判断是否应该复制
-   * @param sourcePath 源文件路径
-   * @param destPath 目标文件路径
-   * @param mode 同步模式
-   * @returns 是否应该复制
-   */
-  private static async shouldCopyByMode(
-    sourcePath: string,
-    destPath: string,
-    mode: 'diff' | 'full' | 'latest' | 'new-version'
-  ): Promise<boolean> {
-    if (mode === 'full' || mode === 'new-version') {
-      return true
-    }
-
-    try {
-      const sourceStat = await fs.stat(sourcePath)
-      const destStat = await fs.stat(destPath).catch(() => null)
-
-      if (!destStat) {
-        // 目标不存在，需要复制
-        return true
-      }
-
-      if (mode === 'diff') {
-        // diff 模式：仅复制更新的
-        return (
-          sourceStat.mtimeMs > destStat.mtimeMs || sourceStat.size !== destStat.size
-        )
-      }
-
-      if (mode === 'latest') {
-        // latest 模式：保留最新的
-        return sourceStat.mtimeMs > destStat.mtimeMs
-      }
-    } catch {
-      // 如果无法获取文件信息，默认复制
-      return true
-    }
-
-    return false
   }
 
   /**

@@ -16,14 +16,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import type { SyncMode, GameToLibraryMode } from '@types/sync'
+import { ref, computed, h } from 'vue'
+import { ElMessage, ElMessageBox, ElRadioGroup, ElRadio, ElSelect, ElOption, ElInput } from 'element-plus'
+import type { SyncMode, BlueprintPair } from '@types/sync'
 import { useSyncOperationStore } from '../../stores/Sync/operation-store'
 import { useSyncConfigStore } from '../../stores/Sync/config-store'
+import { useBlueprintSourceStore } from '../../stores/BlueprintSource'
+import { syncDatasource } from '../../stores/Sync/datasource'
 
 const syncOperationStore = useSyncOperationStore()
 const configStore = useSyncConfigStore()
+const blueprintSourceStore = useBlueprintSourceStore()
 
 const syncMode = ref<SyncMode>('library-to-game')
 const isSyncing = computed(() => syncOperationStore.isSyncing)
@@ -83,76 +86,137 @@ const handleLibraryToGameSync = async () => {
 }
 
 const handleGameToLibrarySync = async () => {
-  const gameToLibraryMode = ref<GameToLibraryMode>('diff')
-  const acknowledgedForGameToLibrary = ref(false)
-
   try {
-    // 第一步：选择同步模式
-    const { value: modeStr } = await ElMessageBox.prompt(
-      '请选择同步模式：\n1. 差异 (diff)\n2. 全量 (full)\n3. 最新 (latest)\n4. 新版本 (new-version)',
-      '选择同步模式',
-      {
-        confirmButtonText: '下一步',
-        cancelButtonText: '取消',
-        inputValue: 'diff',
-      }
-    )
-
-    const modeMap: Record<string, GameToLibraryMode> = {
-      diff: 'diff',
-      full: 'full',
-      latest: 'latest',
-      'new-version': 'new-version',
+    // 第一步：检测新增蓝图
+    if (!configStore.selectedSaveGamePath) {
+      ElMessage.warning('请先选择存档')
+      return
     }
 
-    gameToLibraryMode.value = modeMap[modeStr || 'diff'] || 'diff'
+    // 构建索引
+    const index = await syncDatasource.buildIndex(blueprintSourceStore.sources)
+    
+    // 检测新增蓝图
+    const result = await syncDatasource.detectNewBlueprints(
+      configStore.selectedSaveGamePath,
+      index
+    )
 
-    // 第二步：确认风险
-    await ElMessageBox({
-      title: '确认同步',
-      message: '此操作会将游戏内蓝图同步回蓝图库，请确认已经完成了备份',
-      type: 'warning',
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      distinguishCancelAndClose: true,
-      showCancelButton: true,
-      beforeClose: async (action, instance, done) => {
-        if (action === 'confirm') {
-          // 弹出最终确认
-          try {
-            await ElMessageBox({
-              title: '最终确认',
-              message: '我已知晓风险',
-              type: 'warning',
-              showCancelButton: true,
-              confirmButtonText: '确认',
-              cancelButtonText: '取消',
-              beforeClose: (action2, instance2, done2) => {
-                if (action2 === 'confirm') {
-                  acknowledgedForGameToLibrary.value = true
-                  done2()
-                  done()
-                } else {
-                  done2()
-                }
+    if (result.newBlueprints.length === 0) {
+      ElMessage.info('没有发现新增蓝图')
+      return
+    }
+
+    // 第二步：显示新增蓝图列表，让用户选择目标目录
+    const selectedTargetPath = await new Promise<string | null>((resolve) => {
+      const targetPath = ref<string>('')
+      const useCustomPath = ref(false)
+      const customPath = ref('')
+
+      // 获取所有启用的蓝图源
+      const sourceOptions = blueprintSourceStore.sources
+        .filter((s) => s.enabled)
+        .map((s) => ({ label: s.name, value: s.path }))
+
+      ElMessageBox({
+        title: '选择目标目录',
+        message: () =>
+          h('div', { style: 'padding: 8px 0; min-width: 500px;' }, [
+            h('p', { style: 'margin-bottom: 12px;' }, `发现 ${result.newBlueprints.length} 个新增蓝图：`),
+            h(
+              'div',
+              {
+                style:
+                  'max-height: 200px; overflow-y: auto; border: 1px solid #dcdfe6; border-radius: 4px; padding: 8px; margin-bottom: 16px; background: #f5f7fa;',
               },
-            })
-          } catch {
-            return // 用户取消
+              result.newBlueprints.map((bp) =>
+                h('div', { key: bp.basename, style: 'padding: 4px 0;' }, bp.basename)
+              )
+            ),
+            h('p', { style: 'margin-bottom: 8px;' }, '选择保存位置：'),
+            h(
+              ElRadioGroup,
+              {
+                modelValue: useCustomPath.value,
+                'onUpdate:modelValue': (value: boolean) => {
+                  useCustomPath.value = value
+                },
+                style: 'margin-bottom: 12px;',
+              },
+              () => [
+                h(ElRadio, { label: false }, () => '选择蓝图源'),
+                h(ElRadio, { label: true }, () => '自定义目录'),
+              ]
+            ),
+            useCustomPath.value
+              ? h(ElInput, {
+                  modelValue: customPath.value,
+                  'onUpdate:modelValue': (value: string) => {
+                    customPath.value = value
+                  },
+                  placeholder: '请输入目录路径',
+                  style: 'margin-bottom: 12px;',
+                })
+              : h(
+                  ElSelect,
+                  {
+                    modelValue: targetPath.value,
+                    'onUpdate:modelValue': (value: string) => {
+                      targetPath.value = value
+                    },
+                    placeholder: '请选择蓝图源',
+                    style: 'width: 100%; margin-bottom: 12px;',
+                  },
+                  () =>
+                    sourceOptions.map((option) =>
+                      h(ElOption, { key: option.value, label: option.label, value: option.value })
+                    )
+                ),
+          ]),
+        showCancelButton: true,
+        confirmButtonText: '开始同步',
+        cancelButtonText: '取消',
+        beforeClose: (action, instance, done) => {
+          if (action === 'confirm') {
+            if (useCustomPath.value) {
+              if (!customPath.value || customPath.value.trim() === '') {
+                ElMessage.warning('请输入自定义目录路径')
+                done(false)
+                return
+              }
+              resolve(customPath.value.trim())
+            } else {
+              if (!targetPath.value) {
+                ElMessage.warning('请选择蓝图源')
+                done(false)
+                return
+              }
+              resolve(targetPath.value)
+            }
+            done()
+          } else {
+            resolve(null)
+            done()
           }
-        } else {
-          done()
-        }
-      },
+        },
+      })
     })
 
-    await syncOperationStore.startSync('game-to-library', {
-      gameToLibraryMode: gameToLibraryMode.value,
+    if (!selectedTargetPath) {
+      return // 用户取消
+    }
+
+    // 第三步：执行同步
+    await syncDatasource.syncGameToLibrary({
+      sourcePath: configStore.selectedSaveGamePath,
+      targetPath: selectedTargetPath,
+      blueprints: result.newBlueprints,
     })
+
     ElMessage.success('同步完成')
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') {
-      throw error
+      ElMessage.error(`同步失败：${error instanceof Error ? error.message : String(error)}`)
     }
   }
 }
