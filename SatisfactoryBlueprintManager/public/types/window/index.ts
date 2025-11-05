@@ -97,11 +97,55 @@ export interface ElectronConfigAPI {
   renameConfig(configId: string, newName: string): Promise<void>
 }
 
+/**
+ * 同步相关 Electron IPC API
+ * @注意事项 仅在 Electron 环境可用
+ */
+import type {
+  SyncLibraryToGameParams,
+  SyncGameToLibraryParams,
+  SyncResult,
+  BlueprintIndex,
+  FileLockStatus,
+  BlueprintSource,
+} from '../sync'
+
+export interface ElectronSyncAPI {
+  /** 获取默认路径 */
+  getDefaultPaths(): Promise<{
+    saveGamePath: string
+    libraryPath: string
+    backupPath: string
+  }>
+
+  /** 扫描存档目录下的所有一级目录 */
+  scanSaveGames(basePath: string): Promise<string[]>
+
+  /** 构建蓝图索引 */
+  buildIndex(sources: BlueprintSource[]): Promise<BlueprintIndex>
+
+  /** 库→游戏同步 */
+  syncLibraryToGame(params: SyncLibraryToGameParams): Promise<SyncResult>
+
+  /** 游戏→库同步 */
+  syncGameToLibrary(params: SyncGameToLibraryParams): Promise<SyncResult>
+
+  /** 检查文件占用 */
+  checkFileLock(filePath: string): Promise<FileLockStatus>
+
+  /** 创建备份 */
+  createBackup(sourcePath: string, backupPath: string): Promise<string>
+
+  /** 打开文件夹 */
+  openFolder(path: string): Promise<void>
+}
+
 declare global {
   interface Window {
     electronAPI?: ElectronWindowAPI
     blueprintAPI?: ElectronBlueprintAPI
     configAPI?: ElectronConfigAPI
+    syncAPI?: ElectronSyncAPI
   }
 }
 

@@ -1,0 +1,66 @@
+/**
+ * 暴露同步相关 API
+ */
+import { contextBridge, ipcRenderer } from 'electron'
+import type {
+  SyncLibraryToGameParams,
+  SyncGameToLibraryParams,
+  SyncResult,
+  BlueprintIndex,
+  FileLockStatus,
+} from '../../public/types/sync'
+import type { BlueprintSource } from '../../public/types/blueprint'
+
+/**
+ * 暴露同步 API
+ */
+export const exposeSyncAPI = (): void => {
+  contextBridge.exposeInMainWorld('syncAPI', {
+    /**
+     * 获取默认路径
+     */
+    getDefaultPaths: () => ipcRenderer.invoke('sync:getDefaultPaths'),
+
+    /**
+     * 扫描存档目录下的所有一级目录
+     */
+    scanSaveGames: (basePath: string): Promise<string[]> =>
+      ipcRenderer.invoke('sync:scanSaveGames', basePath),
+
+    /**
+     * 构建蓝图索引
+     */
+    buildIndex: (sources: BlueprintSource[]): Promise<BlueprintIndex> =>
+      ipcRenderer.invoke('sync:buildIndex', sources),
+
+    /**
+     * 库→游戏同步
+     */
+    syncLibraryToGame: (params: SyncLibraryToGameParams): Promise<SyncResult> =>
+      ipcRenderer.invoke('sync:libraryToGame', params),
+
+    /**
+     * 游戏→库同步
+     */
+    syncGameToLibrary: (params: SyncGameToLibraryParams): Promise<SyncResult> =>
+      ipcRenderer.invoke('sync:gameToLibrary', params),
+
+    /**
+     * 检查文件占用
+     */
+    checkFileLock: (filePath: string): Promise<FileLockStatus> =>
+      ipcRenderer.invoke('sync:checkFileLock', filePath),
+
+    /**
+     * 创建备份
+     */
+    createBackup: (sourcePath: string, backupPath: string): Promise<string> =>
+      ipcRenderer.invoke('sync:createBackup', sourcePath, backupPath),
+
+    /**
+     * 打开文件夹
+     */
+    openFolder: (path: string): Promise<void> => ipcRenderer.invoke('sync:openFolder', path),
+  })
+}
+

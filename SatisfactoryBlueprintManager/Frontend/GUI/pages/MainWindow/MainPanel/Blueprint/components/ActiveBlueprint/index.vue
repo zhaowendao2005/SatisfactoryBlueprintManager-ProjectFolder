@@ -3,6 +3,9 @@
     <!-- 标题栏 -->
     <div class="header">
       <h3 class="title">已激活的蓝图</h3>
+      <div class="sync-controls">
+        <SyncController />
+      </div>
     </div>
     <!-- 视图切换器 -->
     <ViewSwitcher />
@@ -22,6 +25,7 @@
 import { computed } from 'vue'
 import ViewSwitcher from './ViewSwitcher.vue'
 import TreeView from './TreeView.vue'
+import SyncController from '../Sync/SyncController.vue'
 import { useActiveBlueprintStore } from '../../stores/ActiveBlueprint'
 
 const store = useActiveBlueprintStore()
@@ -57,6 +61,7 @@ const handleShowDetails = (nodeId: string) => {
     padding: 0 20px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     border-bottom: 1px solid #e0e0e0;
 
     .title {
@@ -64,6 +69,11 @@ const handleShowDetails = (nodeId: string) => {
       font-size: 18px;
       font-weight: 600;
       color: #333;
+    }
+
+    .sync-controls {
+      display: flex;
+      align-items: center;
     }
   }
 

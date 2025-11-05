@@ -8,6 +8,7 @@ import { WindowService } from './Service/Window'
 import { WindowHandler } from './Ipc/WindowHandler'
 import { BlueprintHandler } from './Ipc/BlueprintHandler'
 import { registerConfigHandlers } from './Ipc/ConfigHandler'
+import { registerSyncHandlers } from './Ipc/SyncHandler'
 
 const platform = process.platform || os.platform()
 
@@ -24,6 +25,7 @@ async function createWindow(): Promise<void> {
   WindowHandler.register(mainWindow)
   BlueprintHandler.register()
   registerConfigHandlers()
+  registerSyncHandlers()
 
   // 窗口关闭清理
   mainWindow.on('closed', () => {
