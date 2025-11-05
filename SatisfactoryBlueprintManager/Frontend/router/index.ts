@@ -21,7 +21,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'blueprint',
         name: 'blueprint',
-        component: () => import('@gui/pages/Error/Index.vue'), // 临时使用 Error 页面，后续实现 Blueprint 页面
+        component: () => import('@gui/pages/MainWindow/MainPanel/Blueprint/Index.vue'),
       },
     ],
   },
