@@ -11,6 +11,7 @@ import type {
   FileLockStatus,
   BlueprintSource,
   NewBlueprintsResult,
+  SyncConfigFile,
 } from '../../public/types/sync'
 import { SyncService } from '../Service/Sync/sync-service'
 import { BlueprintIndexer } from '../Service/Sync/blueprint-indexer'
@@ -127,6 +128,21 @@ export function registerSyncHandlers(): void {
       } catch (error) {
         console.error('Failed to sync game to library:', error)
         throw error
+      }
+    }
+  )
+
+  /**
+   * 读取同步配置
+   */
+  ipcMain.handle(
+    'sync:readSyncConfig',
+    async (_event, gamePath: string): Promise<SyncConfigFile | null> => {
+      try {
+        return await SyncService.readSyncConfig(gamePath)
+      } catch (error) {
+        console.error('Failed to read sync config:', error)
+        return null
       }
     }
   )

@@ -67,6 +67,8 @@ export interface SyncLibraryToGameParams {
   targetPath: string                 // 游戏存档蓝图目录（完整路径）
   blueprints: ActiveBlueprintNode[]  // 激活的蓝图节点列表
   backupPath?: string                // 备份目录（如果提供，先备份）
+  activeConfigId?: string            // 当前激活的配置ID（用于写入配置文件）
+  activeConfigName?: string          // 当前激活的配置名称
 }
 
 /**
@@ -131,5 +133,16 @@ export interface UserChoice {
 export interface NewBlueprintsResult {
   newBlueprints: BlueprintPair[]     // 新增的蓝图列表（不在索引中的）
   totalBlueprints: number             // 游戏目录中的总蓝图数
+}
+
+/**
+ * 同步配置文件（写入游戏蓝图目录）
+ */
+export interface SyncConfigFile {
+  version: string                    // 配置版本
+  activeConfigId: string             // 已激活蓝图配置的ID
+  activeConfigName: string           // 已激活蓝图配置的名称
+  createdAt: number                  // 创建时间
+  updatedAt: number                  // 更新时间
 }
 

@@ -12,6 +12,7 @@ import type {
   FileLockStatus,
   BlueprintIndex,
   NewBlueprintsResult,
+  SyncConfigFile,
 } from '../../../public/types/sync'
 import type { ActiveBlueprintNode } from '../../../public/types/blueprint'
 import { FileOperationService } from './file-operation-service'
@@ -79,12 +80,18 @@ export class SyncService {
         }
       }
 
-      // 步骤3：清空目标目录
+      // 步骤3：清空目标目录（保留同步配置文件）
       log('步骤3：清空目标目录', { path: normalizedTargetPath })
       try {
         // 读取目录中的所有文件
         const entries = await fs.readdir(normalizedTargetPath, { withFileTypes: true })
         for (const entry of entries) {
+          // 跳过同步配置文件
+          if (entry.name === '.sync-config.json') {
+            log('保留同步配置文件', { path: entry.name })
+            continue
+          }
+
           const entryPath = path.join(normalizedTargetPath, entry.name)
           if (entry.isDirectory()) {
             // 递归删除目录
@@ -96,7 +103,7 @@ export class SyncService {
             log('删除文件', { path: entryPath })
           }
         }
-        log('✓ 目标目录已清空')
+        log('✓ 目标目录已清空（保留配置）')
       } catch (error) {
         // 如果目录不存在或已经是空的，忽略错误
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -174,6 +181,31 @@ export class SyncService {
             },
             error: error instanceof Error ? error.message : String(error),
           })
+        }
+      }
+
+      // 步骤5：写入同步配置文件（如果提供了配置信息）
+      if (params.activeConfigId && params.activeConfigName) {
+        try {
+          log('步骤5：写入同步配置', { 
+            activeConfigId: params.activeConfigId,
+            activeConfigName: params.activeConfigName 
+          })
+          const configPath = path.join(normalizedTargetPath, '.sync-config.json')
+          
+          const config: SyncConfigFile = {
+            version: '1.0.0',
+            activeConfigId: params.activeConfigId,
+            activeConfigName: params.activeConfigName,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }
+          
+          await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8')
+          log('✓ 同步配置已写入', { configPath })
+        } catch (error) {
+          log('⚠ 写入同步配置失败', { error: error instanceof Error ? error.message : String(error) })
+          // 配置写入失败不影响同步结果
         }
       }
     } catch (error) {
@@ -326,6 +358,31 @@ export class SyncService {
     }
 
     return result
+  }
+
+  /**
+   * 读取同步配置文件
+   * @param gamePath 游戏存档蓝图目录
+   * @returns 同步配置，如果不存在则返回 null
+   */
+  static async readSyncConfig(gamePath: string): Promise<SyncConfigFile | null> {
+    try {
+      const normalizedPath = PathResolver.normalizePath(gamePath)
+      const configPath = path.join(normalizedPath, '.sync-config.json')
+      
+      const content = await fs.readFile(configPath, 'utf-8')
+      const config: SyncConfigFile = JSON.parse(content)
+      
+      log('读取同步配置', { configPath, config })
+      return config
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        log('同步配置不存在', { gamePath })
+        return null
+      }
+      log('⚠ 读取同步配置失败', { error: error instanceof Error ? error.message : String(error) })
+      return null
+    }
   }
 
   /**

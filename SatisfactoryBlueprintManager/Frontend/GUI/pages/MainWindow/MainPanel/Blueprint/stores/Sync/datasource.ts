@@ -10,6 +10,7 @@ import type {
   FileLockStatus,
   BlueprintSource,
   NewBlueprintsResult,
+  SyncConfigFile,
 } from 'src/../../public/types/sync'
 
 /**
@@ -84,6 +85,8 @@ export class SyncDatasource {
           targetPath: params.targetPath,
           blueprints: params.blueprints,
           backupPath: params.backupPath,
+          activeConfigId: params.activeConfigId,
+          activeConfigName: params.activeConfigName,
         })
       )
       return await this.getSyncAPI().syncLibraryToGame(serializableParams)
@@ -148,6 +151,18 @@ export class SyncDatasource {
     } catch (error) {
       console.error('Failed to create backup:', error)
       throw new Error(`创建备份失败：${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  /**
+   * 读取同步配置
+   */
+  async readSyncConfig(gamePath: string): Promise<SyncConfigFile | null> {
+    try {
+      return await this.getSyncAPI().readSyncConfig(gamePath)
+    } catch (error) {
+      console.error('Failed to read sync config:', error)
+      return null
     }
   }
 

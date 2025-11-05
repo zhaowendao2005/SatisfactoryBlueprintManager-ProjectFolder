@@ -26,7 +26,11 @@ export const useSyncOperationStore = defineStore('syncOperation', () => {
    */
   async function startSync(
     mode: SyncMode,
-    options?: { gameToLibraryMode?: GameToLibraryMode }
+    options?: { 
+      gameToLibraryMode?: GameToLibraryMode
+      activeConfigId?: string
+      activeConfigName?: string
+    }
   ): Promise<SyncResult> {
     if (isSyncing.value) {
       throw new Error('已有同步任务进行中')
@@ -71,6 +75,8 @@ export const useSyncOperationStore = defineStore('syncOperation', () => {
           targetPath: configStore.selectedSaveGamePath,
           blueprints: serializedBlueprints,
           backupPath: configStore.autoBackup ? configStore.backupPath : undefined,
+          activeConfigId: options?.activeConfigId,
+          activeConfigName: options?.activeConfigName,
         })
 
         syncResult.value = result

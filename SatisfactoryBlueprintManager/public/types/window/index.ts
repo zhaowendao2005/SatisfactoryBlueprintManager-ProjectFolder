@@ -109,6 +109,7 @@ import type {
   FileLockStatus,
   BlueprintSource,
   NewBlueprintsResult,
+  SyncConfigFile,
 } from '../sync'
 
 export interface ElectronSyncAPI {
@@ -133,6 +134,9 @@ export interface ElectronSyncAPI {
 
   /** 游戏→库同步（简化版：只处理新增蓝图） */
   syncGameToLibrary(params: SyncGameToLibraryParams): Promise<SyncResult>
+
+  /** 读取同步配置 */
+  readSyncConfig(gamePath: string): Promise<SyncConfigFile | null>
 
   /** 检查文件占用 */
   checkFileLock(filePath: string): Promise<FileLockStatus>

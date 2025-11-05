@@ -9,6 +9,7 @@ import type {
   BlueprintIndex,
   FileLockStatus,
   NewBlueprintsResult,
+  SyncConfigFile,
 } from '../../public/types/sync'
 import type { BlueprintSource } from '../../public/types/blueprint'
 
@@ -51,6 +52,12 @@ export const exposeSyncAPI = (): void => {
      */
     syncGameToLibrary: (params: SyncGameToLibraryParams): Promise<SyncResult> =>
       ipcRenderer.invoke('sync:gameToLibrary', params),
+
+    /**
+     * 读取同步配置
+     */
+    readSyncConfig: (gamePath: string): Promise<SyncConfigFile | null> =>
+      ipcRenderer.invoke('sync:readSyncConfig', gamePath),
 
     /**
      * 检查文件占用
