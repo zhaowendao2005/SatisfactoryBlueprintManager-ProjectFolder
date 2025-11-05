@@ -88,18 +88,35 @@ export const useBlueprintSourceStore = defineStore('blueprintSource', {
         // 更新节点状态
         node.isActivated = true
 
-        // 通知 ActiveBlueprintStore 添加蓝图
+        // 通知 ActiveBlueprintStore 添加蓝图（使用新的配置管理方法）
         const activeBlueprintStore = useActiveBlueprintStore()
-        await activeBlueprintStore.addActivatedBlueprint({
-          blueprintId: node.id,
-          name: node.name,
-          path: node.path,
-        })
+        await activeBlueprintStore.activateBlueprint(node)
 
         // 调用 datasource（未来可能需要）
         await blueprintSourceDatasource.activateBlueprint(nodeId)
       } catch (error) {
         console.error('Failed to activate blueprint:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 批量激活蓝图
+     */
+    async batchActivateBlueprints(checkedKeys: string[]): Promise<void> {
+      try {
+        const activeBlueprintStore = useActiveBlueprintStore()
+        await activeBlueprintStore.batchActivateBlueprints(checkedKeys, this.treeData)
+
+        // 更新节点的激活状态
+        for (const key of checkedKeys) {
+          const node = this.findNodeById(key)
+          if (node && node.type === 'blueprint') {
+            node.isActivated = true
+          }
+        }
+      } catch (error) {
+        console.error('Failed to batch activate blueprints:', error)
         throw error
       }
     },

@@ -39,6 +39,13 @@ export default defineConfigWithVueTs(
     files: ['**/*.ts', '**/*.vue'],
     rules: {
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+      // 允许跨端（Electron IPC）公共类型的导入路径
+      '@typescript-eslint/no-restricted-imports': [
+        'off',
+        {
+          patterns: ['@types/*'],
+        },
+      ],
     },
   },
   // https://github.com/vuejs/eslint-config-typescript

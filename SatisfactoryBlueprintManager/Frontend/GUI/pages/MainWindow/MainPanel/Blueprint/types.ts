@@ -35,6 +35,7 @@ export type ActiveNodeType = 'group' | 'blueprint'
  * - 蓝图节点的 children 为 undefined
  * - 分组信息独立于文件系统，完全由用户创建
  * - blueprintId 用于取消激活时查找节点（无论节点在哪个分组下）
+ * - sourcePath 用于去重，防止重复激活同一蓝图
  */
 export interface ActiveBlueprintNode {
   id: string                    // 唯一标识
@@ -42,6 +43,7 @@ export interface ActiveBlueprintNode {
   type: ActiveNodeType          // 节点类型：'group' | 'blueprint'
   blueprintId?: string          // 关联的原始蓝图 id（仅蓝图节点，用于取消激活时查找）
   path?: string                 // 蓝图路径（仅蓝图节点）
+  sourcePath?: string           // 原始蓝图路径（用于去重，仅蓝图节点）
   children?: ActiveBlueprintNode[] // 子节点（仅分组节点）
 }
 

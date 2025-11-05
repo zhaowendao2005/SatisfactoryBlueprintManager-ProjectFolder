@@ -1,6 +1,7 @@
 <template>
   <q-page class="blueprint-container">
     <BlueprintSource />
+    <ConfigManager />
     <ActiveBlueprint />
   </q-page>
 </template>
@@ -8,6 +9,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import BlueprintSource from './components/BlueprintSource/index.vue'
+import ConfigManager from './components/ConfigManager/index.vue'
 import ActiveBlueprint from './components/ActiveBlueprint/index.vue'
 import { useBlueprintSourceStore } from './stores/BlueprintSource'
 import { useActiveBlueprintStore } from './stores/ActiveBlueprint'
@@ -20,7 +22,7 @@ onMounted(async () => {
     // 初始化加载数据
     await Promise.all([
       blueprintSourceStore.loadRootNodes(),
-      activeBlueprintStore.loadActiveTree(),
+      activeBlueprintStore.initializeConfig(), // 初始化配置（会加载配置列表和上次的配置）
     ])
   } catch (error) {
     console.error('Failed to initialize Blueprint module:', error)

@@ -1,4 +1,6 @@
 import type { ActiveBlueprintNode, ViewType } from '../../types'
+// 跨端（Electron IPC）通信的公共类型，必须使用统一导入路径
+import type { ConfigMeta } from '@types/config'
 
 /**
  * ActiveBlueprint Store 状态
@@ -8,6 +10,10 @@ export interface ActiveBlueprintState {
   currentView: ViewType         // 当前视图类型
   checkedKeys: string[]         // 选中的节点 key
   expandedKeys: string[]        // 展开的节点 key
+  // 配置管理相关状态
+  currentConfigId: string | null  // 当前选中的配置 id
+  configList: ConfigMeta[]         // 配置列表
+  treeData: ActiveBlueprintNode[]  // 当前配置的树数据（不包含虚拟根节点）
 }
 
 /**

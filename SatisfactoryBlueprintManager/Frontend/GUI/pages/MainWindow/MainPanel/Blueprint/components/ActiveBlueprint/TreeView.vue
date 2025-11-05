@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import type { ElTree } from 'element-plus'
 import TreeNode from './TreeNode.vue'
 import type { ActiveBlueprintNode } from '../../types'
@@ -109,9 +110,62 @@ const handleCheck = (
 
 const handleDelete = async (nodeId: string) => {
   try {
-    await store.deleteGroup(nodeId)
+    // 查找节点信息
+    const findNode = (nodes: ActiveBlueprintNode[]): ActiveBlueprintNode | null => {
+      for (const node of nodes) {
+        if (node.id === nodeId) {
+          return node
+        }
+        if (node.children) {
+          const found = findNode(node.children)
+          if (found) {
+            return found
+          }
+        }
+      }
+      return null
+    }
+
+    const node = findNode(store.treeData)
+    if (!node) {
+      return
+    }
+
+    // 如果是分组节点且有子节点，弹出确认对话框
+    if (node.type === 'group' && node.children && node.children.length > 0) {
+      try {
+        await ElMessageBox.confirm(
+          `删除分组"${node.name}"时，如何处理其内部的 ${node.children.length} 个子节点？`,
+          '删除确认',
+          {
+            confirmButtonText: '一起删除',
+            cancelButtonText: '移到未分组',
+            distinguishCancelAndClose: true,
+            type: 'warning',
+          }
+        )
+        // 用户选择"一起删除"
+        await store.deleteNode(nodeId, true)
+      } catch (action) {
+        if (action === 'cancel') {
+          // 用户选择"移到未分组"
+          await store.deleteNode(nodeId, false)
+        }
+        // 用户点击关闭或取消，不执行任何操作
+      }
+    } else {
+      // 蓝图节点或空分组，直接删除
+      await store.deleteNode(nodeId, true)
+    }
   } catch (error) {
-    console.error('Failed to delete group:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    if (errorMessage.includes('不允许删除')) {
+      ElMessageBox.alert(errorMessage, '提示', {
+        type: 'warning',
+      })
+    } else {
+      console.error('Failed to delete node:', error)
+    }
   }
 }
 

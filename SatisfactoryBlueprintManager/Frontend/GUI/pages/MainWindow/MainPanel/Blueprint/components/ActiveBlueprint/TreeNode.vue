@@ -11,12 +11,12 @@
 
     <!-- 路径（仅蓝图节点） -->
     <span v-if="data.type === 'blueprint' && data.path" class="node-path">
-      {{ data.path }}
+      {{ formatPath(data.path) }}
     </span>
 
     <!-- 工具箱 -->
     <div class="node-toolbox">
-      <el-tooltip v-if="data.type === 'group'" content="删除" placement="top">
+      <el-tooltip content="删除" placement="top">
         <el-button
           :icon="Delete"
           text
@@ -48,7 +48,7 @@ import { Folder, Document, Delete, InfoFilled, Operation } from '@element-plus/i
 import type { ActiveBlueprintNode } from '../../types'
 
 interface Props {
-  node: any                     // Element Plus TreeNode 对象
+  node: Record<string, unknown> // Element Plus TreeNode 对象
   data: ActiveBlueprintNode
 }
 
@@ -70,6 +70,32 @@ const handleShowDetails = () => {
 
 const handleUse = () => {
   emit('use', props.data.id)
+}
+
+/**
+ * 格式化路径：显示前后部分，中间用省略号
+ */
+const formatPath = (path: string): string => {
+  if (!path) {
+    return ''
+  }
+
+  // 标准化路径分隔符
+  const normalizedPath = path.replace(/\\/g, '/')
+  const maxLength = 50 // 最大显示长度
+
+  if (normalizedPath.length <= maxLength) {
+    return normalizedPath
+  }
+
+  // 计算前后各显示多少字符
+  const prefixLength = Math.floor(maxLength / 2) - 2 // 减去省略号的长度
+  const suffixLength = Math.floor(maxLength / 2) - 2
+
+  const prefix = normalizedPath.substring(0, prefixLength)
+  const suffix = normalizedPath.substring(normalizedPath.length - suffixLength)
+
+  return `${prefix}...${suffix}`
 }
 </script>
 
@@ -108,7 +134,7 @@ const handleUse = () => {
     flex-shrink: 0;
     font-size: 12px;
     color: #999;
-    max-width: 200px;
+    max-width: 400px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
