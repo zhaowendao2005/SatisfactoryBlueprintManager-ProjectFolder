@@ -23,6 +23,11 @@ const routes: RouteRecordRaw[] = [
         name: 'blueprint',
         component: () => import('@gui/pages/MainWindow/MainPanel/Blueprint/Index.vue'),
       },
+      {
+        path: 'settings',
+        name: 'settings',
+        component: () => import('@gui/pages/MainWindow/MainPanel/Settings/Index.vue'),
+      },
     ],
   },
 

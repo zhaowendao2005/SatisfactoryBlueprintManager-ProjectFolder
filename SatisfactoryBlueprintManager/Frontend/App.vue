@@ -1,5 +1,7 @@
 <template>
-  <router-view />
+  <div class="app-container">
+    <router-view />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -11,4 +13,9 @@
 @import './GUI/quasar.variables.scss';
 // 导入全局样式
 @import './GUI/app.scss';
+
+.app-container {
+  height: 100%;
+  overflow: hidden;
+}
 </style>

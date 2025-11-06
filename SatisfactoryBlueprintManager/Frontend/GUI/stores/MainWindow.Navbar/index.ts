@@ -17,7 +17,13 @@ export const useMainWindowNavbarStore = defineStore('mainWindowNavbar', {
         icon: 'Document',
       },
     ] as NavItem[],
-    bottomNavItems: [] as NavItem[],
+    bottomNavItems: [
+      {
+        route: '/settings',
+        label: 'Settings',
+        icon: 'Setting',
+      },
+    ] as NavItem[],
   }),
 
   actions: {

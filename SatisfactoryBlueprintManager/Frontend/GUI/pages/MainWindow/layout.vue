@@ -1,27 +1,23 @@
 <template>
-  <q-layout view="hHh lpR fFf">
+  <div class="main-layout">
     <!-- 自定义标题栏 -->
-    <q-header style="height: 32px; padding: 0">
+    <header class="layout-header">
       <MainWindowTitleBar />
-    </q-header>
+    </header>
 
-    <!-- 左侧导航栏 -->
-    <q-drawer
-      :model-value="true"
-      show-if-above
-      :width="60"
-      :breakpoint="0"
-      bordered
-      class="bg-grey-2"
-    >
-      <MainWindowNavbar />
-    </q-drawer>
+    <!-- 主体容器：包含左侧导航栏和主内容区 -->
+    <div class="layout-body">
+      <!-- 左侧导航栏 -->
+      <aside class="layout-drawer">
+        <MainWindowNavbar />
+      </aside>
 
-    <!-- 主内容区域 -->
-    <q-page-container>
-      <router-view />
-    </q-page-container>
-  </q-layout>
+      <!-- 主内容区域 -->
+      <main class="layout-content">
+        <router-view />
+      </main>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -30,6 +26,45 @@ import MainWindowNavbar from './Shell/MainWindow.Navbar/index.vue'
 </script>
 
 <style scoped lang="scss">
-// QLayout 会自动处理布局，不需要自定义样式
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.layout-header {
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.layout-body {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.layout-drawer {
+  width: 60px;
+  flex-shrink: 0;
+  background-color: #f5f5f5;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.layout-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 </style>
 

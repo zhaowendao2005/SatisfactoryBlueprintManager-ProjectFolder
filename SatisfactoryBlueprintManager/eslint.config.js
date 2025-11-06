@@ -46,6 +46,13 @@ export default defineConfigWithVueTs(
           patterns: ['@types/*'],
         },
       ],
+      // 允许页面入口组件使用 Index.vue 单词命名
+      'vue/multi-word-component-names': [
+        'error',
+        {
+          ignores: ['Index', 'layout'],
+        },
+      ],
     },
   },
   // https://github.com/vuejs/eslint-config-typescript

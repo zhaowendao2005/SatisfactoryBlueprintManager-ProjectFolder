@@ -1,5 +1,5 @@
 <template>
-  <q-page class="blueprint-container">
+  <div class="blueprint-container">
     <TitleCard />
     <SaveGameSelector />
     <PathConfig />
@@ -7,7 +7,7 @@
     <ConfigManager />
     <ActiveBlueprint />
     <SyncProgressDialog v-model="showProgressDialog" />
-  </q-page>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -55,12 +55,22 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .blueprint-container {
-  display: flex;
-  flex-direction: column;
+  height: 100%;
   padding: 16px 24px;
-  gap: 60px;
-  min-height: 100%;
-  overflow-y: scroll;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  // 使用 block 布局，让子元素自然堆叠，不会被压缩
+  display: block;
+
+  // 子元素之间的间距通过 margin 控制
+  > * {
+    margin-bottom: 60px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
 
   // 自定义滚动条样式（3px 宽度）
   &::-webkit-scrollbar {

@@ -9,6 +9,7 @@ import { WindowHandler } from './Ipc/WindowHandler'
 import { BlueprintHandler } from './Ipc/BlueprintHandler'
 import { registerConfigHandlers } from './Ipc/ConfigHandler'
 import { registerSyncHandlers } from './Ipc/SyncHandler'
+import { registerAutomationConfigHandlers } from './Ipc/AutomationConfigHandler'
 
 const platform = process.platform || os.platform()
 
@@ -26,6 +27,7 @@ async function createWindow(): Promise<void> {
   BlueprintHandler.register()
   registerConfigHandlers()
   registerSyncHandlers()
+  registerAutomationConfigHandlers()
 
   // 窗口关闭清理
   mainWindow.on('closed', () => {

@@ -9,6 +9,7 @@
         @click="handleNavClick"
       />
     </div>
+    <q-separator class="nav-separator" />
     <div class="nav-group-bottom">
       <NavItem
         v-for="item in bottomNavItems"
@@ -83,6 +84,11 @@ const handleNavClick = async (item: NavItemType) => {
     flex-direction: column;
     gap: 8px;
     padding: 16px 0;
+  }
+
+  .nav-separator {
+    margin: 8px 10px;
+    background-color: #ddd;
   }
 
   .nav-group-bottom {

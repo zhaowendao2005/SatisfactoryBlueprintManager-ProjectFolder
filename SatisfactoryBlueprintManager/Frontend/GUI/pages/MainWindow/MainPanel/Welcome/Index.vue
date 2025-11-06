@@ -1,5 +1,5 @@
 <template>
-  <q-page class="welcome-page">
+  <div class="welcome-page">
     <!-- 背景图片容器（无边距，z-index 低） -->
     <div class="background-image-container"></div>
     
@@ -13,7 +13,7 @@
         </div>
       </div>
     </div>
-  </q-page>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -24,8 +24,11 @@
 .welcome-page {
   display: flex;
   position: relative;
-  padding: 24px; // 固定外边距
+  height: 100%;
+  padding: 24px;
   background-color: white;
+  overflow: hidden;
+  min-height: 0;
 
   // 背景图片容器（无边距，z-index 低，并列）
   .background-image-container {

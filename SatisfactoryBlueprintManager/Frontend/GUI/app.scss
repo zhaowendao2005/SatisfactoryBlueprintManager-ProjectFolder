@@ -1,2 +1,17 @@
 // app global css in SCSS form
 
+// 高度传递链：html -> body -> #q-app -> App.vue -> layout.vue -> layout-content -> 页面组件
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; // 防止页面级别滚动
+}
+
+#q-app {
+  height: 100%;
+  overflow: hidden;
+}
+
+
