@@ -30,7 +30,6 @@
       v-if="contextMenuVisible"
       :x="contextMenuX"
       :y="contextMenuY"
-      :has-selected="hasSelectedItems"
       @activate-selected="handleBatchActivate"
       @close="contextMenuVisible = false"
     />
@@ -64,10 +63,6 @@ const checkedKeys = computed(() => store.checkedKeys)
 const contextMenuVisible = ref(false)
 const contextMenuX = ref(0)
 const contextMenuY = ref(0)
-
-const hasSelectedItems = computed(() => {
-  return checkedKeys.value.length > 0
-})
 
 // 暴露刷新方法给父组件
 const refresh = async () => {
@@ -177,10 +172,6 @@ const handleNodeContextMenu = (event: MouseEvent) => {
 }
 
 const handleBatchActivate = async () => {
-  if (!hasSelectedItems.value) {
-    return
-  }
-
   try {
     // 检查是否有配置
     if (!activeBlueprintStore.hasActiveConfig()) {
@@ -192,7 +183,15 @@ const handleBatchActivate = async () => {
     // 获取所有选中的节点（包括目录节点，智能分组算法会处理）
     const allCheckedKeys = treeRef.value?.getCheckedKeys() as string[] || []
     
-    await store.batchActivateBlueprints(allCheckedKeys)
+    // 如果没有选中任何项，提示用户
+    if (allCheckedKeys.length === 0) {
+      ElMessage.warning('请先勾选要激活的蓝图或目录')
+      contextMenuVisible.value = false
+      return
+    }
+    
+    // 使用增强版批量激活（支持懒加载目录深度遍历）
+    await activeBlueprintStore.batchActivateBlueprintsEnhanced(allCheckedKeys, store.treeData)
     ElMessage.success(`成功激活选中项`)
 
     // 清空选中状态

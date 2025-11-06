@@ -3,14 +3,14 @@
  * 负责与 Electron IPC 通信，管理配置文件的 CRUD 操作
  */
 // 直接定义类型，避免跨层级相对路径导入问题
-interface ConfigMeta {
+export interface ConfigMeta {
   id: string
   name: string
   createdAt: number
   updatedAt: number
 }
 
-interface ConfigFileData {
+export interface ConfigFileData {
   id: string
   name: string
   version: string

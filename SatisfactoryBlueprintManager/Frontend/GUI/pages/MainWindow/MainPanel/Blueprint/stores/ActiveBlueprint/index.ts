@@ -2,9 +2,11 @@ import { defineStore } from 'pinia'
 import type { ActiveBlueprintNode, ViewType, BlueprintUsageEvent, BlueprintNode } from '../../types'
 import type { ActiveBlueprintState, DropType } from './types'
 import { activeBlueprintDatasource } from './datasource'
-import { configDatasource } from './config-datasource'
-// 跨端（Electron IPC）通信的公共类型，必须使用统一导入路径
-import type { ConfigFileData } from '@types/config'
+import { configDatasource, type ConfigFileData } from './config-datasource'
+import { deepTraverseAndLoad } from './ActiveBlueprint.deep-traversal'
+import { buildEnhancedGroupStructure } from './ActiveBlueprint.group-builder'
+import { detectDuplicates, allocateColors } from './ActiveBlueprint.duplicate-detector'
+import { useBlueprintSourceStore } from '../BlueprintSource'
 
 /**
  * ActiveBlueprint Store
@@ -24,6 +26,9 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     currentConfigId: null,
     configList: [],
     treeData: [],
+    // 重复检测相关状态
+    duplicateMap: new Map(),
+    colorMap: new Map(),
   }),
 
   actions: {
@@ -70,6 +75,8 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
         await activeBlueprintDatasource.removeBlueprint(blueprintId)
         // 重新加载树
         await this.loadActiveTree()
+        // 更新重复检测
+        this.updateDuplicateDetection()
       } catch (error) {
         console.error('Failed to remove activated blueprint:', error)
         throw error
@@ -295,6 +302,9 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
 
         // 保存配置
         await this.saveCurrentConfig()
+
+        // 更新重复检测
+        this.updateDuplicateDetection()
       } catch (error) {
         console.error('Failed to delete node:', error)
         throw error
@@ -532,6 +542,9 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
 
         // 保存配置
         await this.saveCurrentConfig()
+
+        // 更新重复检测
+        this.updateDuplicateDetection()
       } catch (error) {
         console.error('Failed to move nodes:', error)
         throw error
@@ -686,6 +699,9 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
 
         // 保存配置
         await this.saveCurrentConfig()
+
+        // 更新重复检测
+        this.updateDuplicateDetection()
       } catch (error) {
         console.error('Failed to move node:', error)
         throw error
@@ -1068,7 +1084,145 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     },
 
     /**
-     * 批量激活蓝图（智能分组）
+     * 批量激活蓝图（增强版，支持懒加载目录深度遍历）
+     * @param checkedKeys 选中的节点 id 列表（包含蓝图和目录）
+     * @param sourceTree 蓝图源树根节点
+     * @注意事项 
+     * - 自动检测并加载未加载的目录节点
+     * - 保留源目录层级结构
+     * - 加载完成后自动更新 duplicateMap 和 colorMap
+     */
+    async batchActivateBlueprintsEnhanced(
+      checkedKeys: string[],
+      sourceTree: BlueprintNode[]
+    ): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
+      try {
+        // 深度遍历并加载未加载的目录节点
+        const blueprintSourceStore = useBlueprintSourceStore()
+        const loadedResult = await deepTraverseAndLoad(
+          checkedKeys,
+          sourceTree,
+          blueprintSourceStore
+        )
+
+        // 构建增强分组结构（保留源目录层级）
+        const result = buildEnhancedGroupStructure(
+          loadedResult.fullyLoadedKeys,
+          sourceTree,
+          loadedResult.loadedDirectories
+        )
+
+        // 合并到当前树数据
+        for (const group of result.groups) {
+          // 检查分组是否已存在（简单匹配：名称相同）
+          const existingGroup = this.treeData.find(
+            (n) => n.type === 'group' && n.name === group.name
+          )
+
+          if (existingGroup && existingGroup.children) {
+            // 合并到现有分组（递归合并子节点）
+            this.mergeGroupNodes(existingGroup, group)
+          } else {
+            // 添加新分组
+            this.treeData.push(group)
+          }
+        }
+
+        // 添加到"未分组"
+        const ungrouped = result.ungrouped.filter(
+          (bp) => !this.isBlueprintActivated(bp.sourcePath || bp.path || '')
+        )
+
+        if (ungrouped.length > 0) {
+          let ungroupedNode = this.getUngroupedNode()
+          if (!ungroupedNode) {
+            ungroupedNode = {
+              id: 'ungrouped',
+              type: 'group',
+              name: '未分组',
+              children: [],
+            }
+            this.treeData.push(ungroupedNode)
+          }
+
+          if (!ungroupedNode.children) {
+            ungroupedNode.children = []
+          }
+
+          ungroupedNode.children.push(...ungrouped)
+        }
+
+        // 更新 rootNode
+        this.rootNode = {
+          id: 'root',
+          name: '根分组',
+          type: 'group',
+          children: this.treeData,
+        }
+
+        // 自动保存
+        await this.saveCurrentConfig()
+
+        // 更新重复检测
+        this.updateDuplicateDetection()
+      } catch (error) {
+        console.error('Failed to batch activate blueprints:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 递归合并分组节点
+     * @param target 目标分组节点
+     * @param source 源分组节点
+     */
+    mergeGroupNodes(target: ActiveBlueprintNode, source: ActiveBlueprintNode): void {
+      if (target.type !== 'group' || source.type !== 'group') {
+        return
+      }
+
+      if (!target.children) {
+        target.children = []
+      }
+
+      if (!source.children) {
+        return
+      }
+
+      for (const sourceChild of source.children) {
+        if (sourceChild.type === 'blueprint') {
+          // 蓝图节点：检查是否已存在（按 sourcePath）
+          const sourcePath = sourceChild.sourcePath || sourceChild.path
+          const exists = target.children.some(
+            (child) =>
+              child.type === 'blueprint' &&
+              (child.sourcePath || child.path) === sourcePath
+          )
+
+          if (!exists) {
+            target.children.push(sourceChild)
+          }
+        } else if (sourceChild.type === 'group') {
+          // 分组节点：查找同名分组，递归合并
+          const existingSubGroup = target.children.find(
+            (child) => child.type === 'group' && child.name === sourceChild.name
+          )
+
+          if (existingSubGroup) {
+            this.mergeGroupNodes(existingSubGroup, sourceChild)
+          } else {
+            target.children.push(sourceChild)
+          }
+        }
+      }
+    },
+
+    /**
+     * 批量激活蓝图（智能分组）- 保留原方法以兼容
      */
     async batchActivateBlueprints(checkedKeys: string[], sourceTree: BlueprintNode[]): Promise<void> {
       if (!this.hasActiveConfig()) {
@@ -1132,10 +1286,24 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
 
         // 自动保存
         await this.saveCurrentConfig()
+
+        // 更新重复检测
+        this.updateDuplicateDetection()
       } catch (error) {
         console.error('Failed to batch activate blueprints:', error)
         throw error
       }
+    },
+
+    /**
+     * 更新重复检测映射
+     * @注意事项 
+     * - 每次 treeData 变化后调用
+     * - 自动更新 duplicateMap 和 colorMap
+     */
+    updateDuplicateDetection(): void {
+      this.duplicateMap = detectDuplicates(this.treeData)
+      this.colorMap = allocateColors(this.duplicateMap)
     },
 
     /**

@@ -151,19 +151,33 @@ export const useSyncOperationStore = defineStore('syncOperation', () => {
 })
 
 /**
- * 收集激活的蓝图节点
+ * 收集已激活的蓝图（基于路径去重）
+ * @注意事项 同一个蓝图可能被激活到多个分组，同步时只需要同步一次
  */
 function collectActiveBlueprints(nodes: any[]): any[] {
   const blueprints: any[] = []
+  const pathSet = new Set<string>() // 用于去重
 
-  for (const node of nodes) {
-    if (node.type === 'blueprint') {
-      blueprints.push(node)
-    } else if (node.children && Array.isArray(node.children)) {
-      blueprints.push(...collectActiveBlueprints(node.children))
+  function collect(nodes: any[]): void {
+    for (const node of nodes) {
+      if (node.type === 'blueprint') {
+        // 使用 sourcePath 或 path 作为唯一标识
+        const uniquePath = node.sourcePath || node.path
+        
+        // 规范化路径（统一使用正斜杠）
+        const normalizedPath = uniquePath ? uniquePath.replace(/\\/g, '/') : null
+        
+        if (normalizedPath && !pathSet.has(normalizedPath)) {
+          pathSet.add(normalizedPath)
+          blueprints.push(node)
+        }
+      } else if (node.children && Array.isArray(node.children)) {
+        collect(node.children)
+      }
     }
   }
 
+  collect(nodes)
   return blueprints
 }
 

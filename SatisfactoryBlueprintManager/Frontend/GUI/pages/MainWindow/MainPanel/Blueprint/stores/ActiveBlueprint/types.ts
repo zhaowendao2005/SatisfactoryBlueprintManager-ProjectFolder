@@ -1,6 +1,38 @@
-import type { ActiveBlueprintNode, ViewType } from '../../types'
-// 跨端（Electron IPC）通信的公共类型，必须使用统一导入路径
-import type { ConfigMeta } from '@types/config'
+import type { ActiveBlueprintNode, ViewType, BlueprintNode } from '../../types'
+import type { ConfigMeta } from './config-datasource'
+
+/**
+ * 深度遍历加载器的返回结果
+ * @注意事项 fullyLoadedKeys 仅包含蓝图节点 id，不包含目录节点
+ */
+export interface LoadedNodesResult {
+  fullyLoadedKeys: string[]                    // 完全加载后的所有蓝图节点 id
+  loadedDirectories: Map<string, BlueprintNode> // 已加载的目录节点（key=nodeId）
+}
+
+/**
+ * 增强智能分组构建器的返回结果
+ * @注意事项 groups 中的分组节点可能包含多层嵌套（保留源目录结构）
+ */
+export interface GroupStructure {
+  groups: ActiveBlueprintNode[]     // 分组节点（包含子目录和蓝图）
+  ungrouped: ActiveBlueprintNode[]  // 未分组蓝图（选中单个蓝图无父目录时）
+}
+
+/**
+ * 重复蓝图映射表
+ * @注意事项 
+ * - key 为蓝图的物理路径（sourcePath）
+ * - value 为所有激活该蓝图的节点 id 数组
+ * - 仅包含 length > 1 的条目（真正重复的）
+ */
+export type DuplicateMap = Map<string, string[]>
+
+/**
+ * 颜色映射表
+ * @注意事项 颜色值为 CSS 兼容格式（hex 或 hsl）
+ */
+export type ColorMap = Map<string, string>
 
 /**
  * ActiveBlueprint Store 状态
@@ -14,6 +46,9 @@ export interface ActiveBlueprintState {
   currentConfigId: string | null  // 当前选中的配置 id
   configList: ConfigMeta[]         // 配置列表
   treeData: ActiveBlueprintNode[]  // 当前配置的树数据（不包含虚拟根节点）
+  // 重复检测相关状态
+  duplicateMap: DuplicateMap      // 重复蓝图映射表（响应式）
+  colorMap: ColorMap               // 颜色映射表（响应式）
 }
 
 /**

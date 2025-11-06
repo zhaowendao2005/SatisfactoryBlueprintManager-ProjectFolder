@@ -18,6 +18,12 @@
       @dblclick="handleStartEdit"
     >
       {{ data.name }}
+      <!-- 重复蓝图标识圆点 -->
+      <span
+        v-if="duplicateColor"
+        class="duplicate-dot"
+        :style="{ backgroundColor: duplicateColor }"
+      />
     </span>
     <el-input
       v-else
@@ -89,6 +95,12 @@
       @dblclick="handleStartEdit"
     >
       {{ data.name }}
+      <!-- 重复蓝图标识圆点 -->
+      <span
+        v-if="duplicateColor"
+        class="duplicate-dot"
+        :style="{ backgroundColor: duplicateColor }"
+      />
     </span>
     <el-input
       v-else
@@ -136,10 +148,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, computed } from 'vue'
 import { Folder, Document, Delete, InfoFilled, Operation, Edit, Plus } from '@element-plus/icons-vue'
 import { ElInput } from 'element-plus'
 import type { ActiveBlueprintNode } from '../../types'
+import { useActiveBlueprintStore } from '../../stores/ActiveBlueprint'
 
 interface Props {
   node: Record<string, unknown> // Element Plus TreeNode 对象
@@ -147,6 +160,22 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+const store = useActiveBlueprintStore()
+
+// 计算重复蓝图的颜色
+const duplicateColor = computed(() => {
+  if (props.data.type !== 'blueprint') {
+    return undefined
+  }
+
+  const sourcePath = props.data.sourcePath || props.data.path
+  if (!sourcePath) {
+    return undefined
+  }
+
+  return store.colorMap.get(sourcePath)
+})
 
 const emit = defineEmits<{
   (e: 'delete', nodeId: string): void
@@ -276,11 +305,22 @@ const formatPath = (path: string): string => {
     color: #333;
     min-width: 0;
     cursor: default;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     
     // 分组节点可双击编辑
     .node-group & {
       cursor: text;
     }
+  }
+
+  .duplicate-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 
   .node-title-input {

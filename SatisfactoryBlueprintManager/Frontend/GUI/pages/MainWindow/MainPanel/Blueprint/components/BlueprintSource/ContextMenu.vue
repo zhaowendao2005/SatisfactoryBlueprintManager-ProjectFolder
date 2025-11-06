@@ -6,18 +6,11 @@
     @click.stop
   >
     <div
-      v-if="hasSelected"
       class="menu-item"
       @click="handleActivateSelected"
     >
       <el-icon><CircleCheck /></el-icon>
       <span>激活选中项</span>
-    </div>
-    <div
-      v-else
-      class="menu-item disabled"
-    >
-      <span>请先勾选蓝图</span>
     </div>
   </div>
 </template>
@@ -29,7 +22,6 @@ import { CircleCheck } from '@element-plus/icons-vue'
 interface Props {
   x: number
   y: number
-  hasSelected: boolean
 }
 
 const props = defineProps<Props>()
@@ -66,9 +58,7 @@ onUnmounted(() => {
 })
 
 const handleActivateSelected = () => {
-  if (props.hasSelected) {
-    emit('activate-selected')
-  }
+  emit('activate-selected')
 }
 </script>
 

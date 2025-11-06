@@ -25,6 +25,7 @@
     "@quasar/extras": "^1.16.4",
     "axios": "^1.2.1",
     "element-plus": "^2.9.1",
+    "p-limit": "^4.0.0",
     "pinia": "^3.0.1",
     "quasar": "^2.16.0",
     "vue": "^3.4.18",
