@@ -47,3 +47,23 @@ export interface AutomationConfigData {
   updatedAt: number
 }
 
+/**
+ * 自动化测试执行结果
+ */
+export interface AutomationTestResult {
+  success: boolean      // 是否成功
+  message: string       // 执行消息（成功/失败原因）
+  duration?: number     // 执行耗时（毫秒）
+}
+
+/**
+ * 显示器信息
+ * @注意事项 bounds 坐标是相对于主显示器左上角的逻辑坐标
+ */
+export interface DisplayInfo {
+  id: number                           // 显示器唯一 ID（索引）
+  bounds: { x: number; y: number; width: number; height: number }  // 逻辑坐标和尺寸
+  scaleFactor: number                  // DPI 缩放因子
+  isPrimary: boolean                   // 是否主显示器
+}
+

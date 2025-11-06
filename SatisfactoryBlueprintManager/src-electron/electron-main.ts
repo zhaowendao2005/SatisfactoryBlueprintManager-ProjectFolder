@@ -27,7 +27,7 @@ async function createWindow(): Promise<void> {
   BlueprintHandler.register()
   registerConfigHandlers()
   registerSyncHandlers()
-  registerAutomationConfigHandlers()
+  registerAutomationConfigHandlers(mainWindow)
 
   // 窗口关闭清理
   mainWindow.on('closed', () => {

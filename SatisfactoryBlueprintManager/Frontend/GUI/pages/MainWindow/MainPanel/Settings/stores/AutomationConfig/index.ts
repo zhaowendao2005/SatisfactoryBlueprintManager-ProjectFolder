@@ -6,6 +6,7 @@ import { defineStore } from 'pinia'
 import { Notify } from 'quasar'
 import type { AutomationConfigState } from './types'
 import type { AutomationConfigMeta, AutomationConfigData, ManualConfigParams } from '@types/automation-config'
+import type { CalibrationResult, CalibrationType } from '@types/automation-config/calibration'
 
 declare global {
   interface Window {
@@ -16,6 +17,12 @@ declare global {
       createConfig: (name: string) => Promise<string>
       deleteConfig: (id: string) => Promise<void>
       renameConfig: (id: string, newName: string) => Promise<void>
+      startCalibration: (type: CalibrationType) => Promise<void>
+      cancelCalibration: () => Promise<void>
+      onCalibrationResult: (callback: (result: CalibrationResult) => void) => () => void
+      onCalibrationError: (callback: (error: string) => void) => () => void
+      executeTest: (testText: string, configId?: string) => Promise<import('@types/automation-config').AutomationTestResult>
+      getDisplaysInfo: () => Promise<import('@types/automation-config').DisplayInfo[]>
     }
   }
 }

@@ -87,37 +87,33 @@
         </div>
       </el-form-item>
 
-      <!-- 显示器序号 -->
+      <!-- 显示器选择 -->
       <el-form-item
-        label="显示器序号"
+        label="显示器选择"
         class="form-item"
       >
-        <div class="form-input-group">
-          <el-input
-            v-model.number="localParams.displayIndex"
-            type="number"
-            placeholder="未来记录操作的显示器序号"
-            clearable
-            @blur="handleBlur"
-            @clear="handleClearDisplayIndex"
-          />
-        </div>
-        <div class="form-hint">
-          未来记录操作的显示器序号，可为空
-        </div>
+        <DisplaySelector
+          v-model="localParams.displayIndex"
+          @update:model-value="handleDisplayIndexChange"
+        />
       </el-form-item>
     </el-form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { debounce } from 'lodash-es'
 import { Location } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import type { FormRules } from 'element-plus'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - TypeScript 误报，@types 别名已正确配置
 import type { ManualConfigParams } from '@types/automation-config'
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - TypeScript 误报，@types 别名已正确配置
+import type { CalibrationType, CalibrationResult } from '@types/automation-config/calibration'
+import DisplaySelector from './DisplaySelector.vue'
 
 interface Props {
   modelValue: ManualConfigParams
@@ -142,9 +138,37 @@ const rules: FormRules = {
   ],
 }
 
+// 标定相关状态
+const isCalibrating = ref(false)
+const currentCalibrationType = ref<CalibrationType | null>(null)
+let unsubscribeResult: (() => void) | null = null
+let unsubscribeError: (() => void) | null = null
+
 // 组件挂载
 onMounted(() => {
-  // 初始化完成
+  // 注册标定结果监听
+  const api = window.automationConfigAPI
+  if (api) {
+    unsubscribeResult = api.onCalibrationResult((result: CalibrationResult) => {
+      handleCalibrationResult(result)
+    })
+    unsubscribeError = api.onCalibrationError((error: string) => {
+      handleCalibrationError(error)
+    })
+  }
+})
+
+// 组件卸载
+onUnmounted(() => {
+  // 清理监听器
+  if (unsubscribeResult) {
+    unsubscribeResult()
+    unsubscribeResult = null
+  }
+  if (unsubscribeError) {
+    unsubscribeError()
+    unsubscribeError = null
+  }
 })
 
 // 同步外部值变化
@@ -197,15 +221,80 @@ const handleBlur = () => {
   }
 }
 
-// 清空显示器序号
-const handleClearDisplayIndex = () => {
-  localParams.value.displayIndex = null
+// 处理显示器序号变化
+const handleDisplayIndexChange = () => {
   handleBlur()
 }
 
-// 定位按钮占位
-const handleLocate = (type: 'inputField' | 'firstBlueprint') => {
-  console.log(`定位${type === 'inputField' ? '输入栏' : '第一位蓝图位置'}`)
+// 定位按钮处理
+const handleLocate = async (type: 'inputField' | 'firstBlueprint') => {
+  const api = window.automationConfigAPI
+  if (!api) {
+    ElMessage.error('自动化配置 API 不可用，请确保在 Electron 环境中运行')
+    return
+  }
+
+  if (isCalibrating.value) {
+    ElMessage.warning('标定流程已在进行中，请等待完成')
+    return
+  }
+
+  try {
+    isCalibrating.value = true
+    const calibrationType: CalibrationType = type === 'inputField' ? 'inputField' : 'firstBlueprint'
+    currentCalibrationType.value = calibrationType
+    
+    // 启动标定流程（结果通过事件回调接收）
+    await api.startCalibration(calibrationType)
+    
+    // 注意：结果会在 handleCalibrationResult 中处理
+  } catch (error) {
+    console.error('启动标定失败:', error)
+    ElMessage.error(`启动标定失败: ${error instanceof Error ? error.message : String(error)}`)
+    isCalibrating.value = false
+    currentCalibrationType.value = null
+  }
+}
+
+// 处理标定结果
+const handleCalibrationResult = (result: CalibrationResult) => {
+  isCalibrating.value = false
+  
+  // 根据标定类型更新对应的坐标
+  if (result.displayIndex !== undefined && result.displayIndex !== null) {
+    // 更新显示器序号（如果用户还没有设置）
+    if (localParams.value.displayIndex === null || localParams.value.displayIndex === undefined) {
+      localParams.value.displayIndex = result.displayIndex
+    }
+  }
+  
+  // 根据当前标定类型更新对应字段
+  if (currentCalibrationType.value === 'inputField') {
+    localParams.value.inputFieldPosition = { x: result.x, y: result.y }
+  } else if (currentCalibrationType.value === 'firstBlueprint') {
+    localParams.value.firstBlueprintPosition = { x: result.x, y: result.y }
+  }
+  
+  // 重置标定类型
+  currentCalibrationType.value = null
+  
+  // 立即保存
+  handleBlur()
+  
+  ElMessage.success('坐标标定成功')
+}
+
+// 处理标定错误
+const handleCalibrationError = (error: string) => {
+  isCalibrating.value = false
+  currentCalibrationType.value = null
+  
+  // 用户取消不显示错误提示
+  if (error.includes('取消') || error.includes('cancelled')) {
+    return
+  }
+  
+  ElMessage.error(`标定失败: ${error}`)
 }
 </script>
 

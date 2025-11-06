@@ -243,7 +243,7 @@ export default configure((ctx) => {
 
       // Electron preload scripts (if any) from /src-electron, WITHOUT file extension
       // 注意：路径相对于 src-electron，不要包含扩展名
-      preloadScripts: ['electron-preload'],
+      preloadScripts: ['electron-preload', 'Preload/overlay'],
 
       // specify the debugging port to use for the Electron app when running in development mode
       inspectPort: 5858,

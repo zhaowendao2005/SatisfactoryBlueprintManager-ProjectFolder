@@ -12,6 +12,7 @@
         >
           <el-anchor-link href="#config-management" title="配置管理" />
           <el-anchor-link href="#automation-config" title="自动化配置" />
+          <el-anchor-link href="#automation-debug" title="自动化测试" />
         </el-anchor>
       </div>
 
@@ -32,6 +33,14 @@
         >
           <AutomationConfigCard />
         </section>
+
+        <!-- 自动化测试卡片 -->
+        <section
+          id="automation-debug"
+          class="content-section"
+        >
+          <AutomationDebugCard />
+        </section>
       </div>
     </div>
   </div>
@@ -41,6 +50,7 @@
 import { ref, onMounted } from 'vue'
 import ConfigManagerCard from './components/ConfigManagerCard.vue'
 import AutomationConfigCard from './components/AutomationConfigCard.vue'
+import AutomationDebugCard from './components/AutomationDebugCard.vue'
 import { useAutomationConfigStore } from './stores/AutomationConfig'
 
 const automationConfigStore = useAutomationConfigStore()
