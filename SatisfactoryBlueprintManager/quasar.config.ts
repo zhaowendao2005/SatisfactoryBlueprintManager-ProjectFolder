@@ -259,12 +259,25 @@ export default configure((ctx) => {
         // protocol: 'myapp://path',
         // Windows only
         // win32metadata: { ... }
+        
+        // 额外资源：Python 自动化服务 exe
+        extraResource: [
+          'public/automation-service'
+        ]
       },
 
       builder: {
         // https://www.electron.build/configuration/configuration
 
         appId: 'satisfactoryblueprintmanager',
+        
+        // 额外资源：Python 自动化服务 exe
+        extraResources: [
+          {
+            from: 'public/automation-service',
+            to: 'automation-service'
+          }
+        ]
       },
     },
 

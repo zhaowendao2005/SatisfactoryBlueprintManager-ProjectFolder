@@ -15,6 +15,7 @@
     "dev:electron": "node ../Script/run-with-logger.mjs --name dev-electron -- quasar dev -m electron",
     "dev:electron:no-lint": "cross-env SKIP_LINT=true node ../Script/run-with-logger.mjs --name dev-electron-no-lint -- quasar dev -m electron",
     "build": "quasar build",
+    "build:python": "node ../Script/build-python-service.mjs",
     "build:electron": "node ../Script/run-with-logger.mjs --name build-electron -- quasar build -m electron",
     "build:electron:no-lint": "cross-env SKIP_LINT=true node ../Script/run-with-logger.mjs --name build-electron-no-lint -- quasar build -m electron",
     "build:electron:debug:no-lint": "cross-env SKIP_LINT=true node ../Script/run-with-logger.mjs --name build-electron-debug-no-lint -- quasar build -m electron",

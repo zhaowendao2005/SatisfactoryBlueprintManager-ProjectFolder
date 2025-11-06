@@ -2,12 +2,12 @@
  * 自动化执行器服务
  * @注意事项 单例模式，同一时间仅允许一个测试任务
  */
-import robot from 'robotjs'
+import { pythonServiceManager } from '../PythonServiceManager'
 import type { ManualConfigParams } from '../../../public/types/automation-config'
 import type { AutomationTestResult } from '../../../public/types/automation-config'
 
 /**
- * 延迟函数（robotjs 不提供内置 sleep）
+ * 延迟函数
  */
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -118,9 +118,14 @@ export class AutomationExecutor {
     }
 
     // 1. 点击输入栏
-    robot.moveMouse(config.inputFieldPosition.x, config.inputFieldPosition.y)
-    await sleep(100)
-    robot.mouseClick('left')
+    await pythonServiceManager.execute({
+      action: 'mouseClick',
+      params: {
+        x: config.inputFieldPosition.x,
+        y: config.inputFieldPosition.y,
+        button: 'left'
+      }
+    })
 
     // 检查是否已取消
     if (signal.aborted) {
@@ -128,14 +133,13 @@ export class AutomationExecutor {
     }
 
     // 2. 逐字符输入
-    for (const char of testText) {
-      if (signal.aborted) {
-        throw new Error('任务已取消')
+    await pythonServiceManager.execute({
+      action: 'typeText',
+      params: {
+        text: testText,
+        delay: config.charInputDelay
       }
-
-      robot.typeString(char)
-      await sleep(config.charInputDelay)
-    }
+    })
 
     // 检查是否已取消
     if (signal.aborted) {
@@ -143,9 +147,14 @@ export class AutomationExecutor {
     }
 
     // 3. 点击第一蓝图位置
-    robot.moveMouse(config.firstBlueprintPosition.x, config.firstBlueprintPosition.y)
-    await sleep(100)
-    robot.mouseClick('left')
+    await pythonServiceManager.execute({
+      action: 'mouseClick',
+      params: {
+        x: config.firstBlueprintPosition.x,
+        y: config.firstBlueprintPosition.y,
+        button: 'left'
+      }
+    })
   }
 
   /**
