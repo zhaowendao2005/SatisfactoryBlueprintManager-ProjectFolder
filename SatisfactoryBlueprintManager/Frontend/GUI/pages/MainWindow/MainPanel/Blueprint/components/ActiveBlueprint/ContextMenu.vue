@@ -1,36 +1,32 @@
 <template>
-  <el-dropdown
-    :visible="visible"
-    trigger="contextmenu"
-    @command="handleCommand"
-  >
-    <template #dropdown>
-      <el-dropdown-menu>
-        <el-dropdown-item command="create-group">
-          在此处创建子分组
-        </el-dropdown-item>
-      </el-dropdown-menu>
-    </template>
-  </el-dropdown>
+  <el-dropdown-menu>
+    <el-dropdown-item command="rename">
+      <el-icon><Edit /></el-icon>
+      <span>重命名</span>
+    </el-dropdown-item>
+    <el-dropdown-item command="create-group">
+      <el-icon><Plus /></el-icon>
+      <span>创建新组</span>
+    </el-dropdown-item>
+  </el-dropdown-menu>
 </template>
 
 <script setup lang="ts">
+import { Edit, Plus } from '@element-plus/icons-vue'
+
 const emit = defineEmits<{
-  (e: 'create-group', parentId: string): void
+  (e: 'rename'): void
+  (e: 'create-group'): void
 }>()
 
 interface Props {
-  visible: boolean
-  parentId: string
+  nodeId: string
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 
-const handleCommand = (command: string) => {
-  if (command === 'create-group') {
-    emit('create-group', props.parentId)
-  }
-}
+// ContextMenu 现在不需要 handleCommand，因为 ElDropdownMenu 会直接触发 command 事件
+// 这个组件只是菜单项的展示，事件由父组件处理
 </script>
 
 <style scoped lang="scss">

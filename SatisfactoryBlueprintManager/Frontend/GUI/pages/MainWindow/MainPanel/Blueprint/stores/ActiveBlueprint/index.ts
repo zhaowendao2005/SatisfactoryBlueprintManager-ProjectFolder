@@ -78,11 +78,104 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
 
     /**
      * 创建分组
+     * @param parentId 父节点 ID，null 表示在根节点下创建
+     * @param name 分组名称，如果为 null 则自动生成"新增组1"、"新增组2"等
      */
-    async createGroup(parentId: string | null, name: string): Promise<void> {
+    async createGroup(parentId: string | null, name: string | null = null): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
       try {
-        await activeBlueprintDatasource.createGroup(parentId, name)
-        await this.loadActiveTree()
+        // 查找父节点
+        const findNode = (nodes: ActiveBlueprintNode[]): ActiveBlueprintNode | null => {
+          if (parentId === null) {
+            // parentId 为 null，表示在根节点下创建分组
+            // 返回一个虚拟的根节点，children 指向 treeData
+            return {
+              id: 'root',
+              name: '根分组',
+              type: 'group',
+              children: this.treeData,
+            }
+          }
+
+          for (const node of nodes) {
+            if (node.id === parentId) {
+              return node
+            }
+            if (node.children) {
+              const found = findNode(node.children)
+              if (found) {
+                return found
+              }
+            }
+          }
+          return null
+        }
+
+        const parent = findNode(this.treeData)
+        if (!parent) {
+          throw new Error('父节点不存在')
+        }
+
+        if (parent.type !== 'group') {
+          throw new Error('只能在分组节点下创建子分组')
+        }
+
+        // 确保父节点有 children 数组
+        if (!parent.children) {
+          parent.children = []
+        }
+
+        // 如果没有指定名称，自动生成"新增组1"、"新增组2"等
+        let groupName = name
+        if (!groupName) {
+          // 查找父节点下已有的分组名称，找到最大编号
+          const groupNamePattern = /^新增组(\d+)$/
+          let maxNumber = 0
+          
+          for (const child of parent.children) {
+            if (child.type === 'group') {
+              const match = child.name.match(groupNamePattern)
+              if (match && match[1]) {
+                const number = parseInt(match[1], 10)
+                if (number > maxNumber) {
+                  maxNumber = number
+                }
+              }
+            }
+          }
+          
+          groupName = `新增组${maxNumber + 1}`
+        }
+
+        // 创建新分组
+        const newGroupId = `group-${Date.now()}`
+        const newGroup: ActiveBlueprintNode = {
+          id: newGroupId,
+          name: groupName,
+          type: 'group',
+          children: [],
+        }
+
+        // 如果 parentId 为 null，添加到根节点的 treeData
+        if (parentId === null) {
+          this.treeData.push(newGroup)
+        } else {
+          parent.children.push(newGroup)
+        }
+
+        // 更新 rootNode
+        this.rootNode = {
+          id: 'root',
+          name: '根分组',
+          type: 'group',
+          children: this.treeData,
+        }
+
+        // 保存配置
+        await this.saveCurrentConfig()
       } catch (error) {
         console.error('Failed to create group:', error)
         throw error
@@ -216,7 +309,237 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     },
 
     /**
-     * 移动节点（拖拽）
+     * 重命名节点
+     */
+    async renameNode(nodeId: string, newName: string): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
+      if (!newName || newName.trim() === '') {
+        throw new Error('节点名称不能为空')
+      }
+
+      try {
+        // 查找节点
+        const findNode = (nodes: ActiveBlueprintNode[]): ActiveBlueprintNode | null => {
+          for (const node of nodes) {
+            if (node.id === nodeId) {
+              return node
+            }
+            if (node.children) {
+              const found = findNode(node.children)
+              if (found) {
+                return found
+              }
+            }
+          }
+          return null
+        }
+
+        const node = findNode(this.treeData)
+        if (!node) {
+          throw new Error('节点不存在')
+        }
+
+        // 检查是否是"未分组"节点，不允许重命名
+        if (node.id === 'ungrouped' && node.type === 'group') {
+          throw new Error('不允许重命名"未分组"节点')
+        }
+
+        // 更新节点名称
+        node.name = newName.trim()
+
+        // 更新 rootNode
+        this.rootNode = {
+          id: 'root',
+          name: '根分组',
+          type: 'group',
+          children: this.treeData,
+        }
+
+        // 保存配置
+        await this.saveCurrentConfig()
+      } catch (error) {
+        console.error('Failed to rename node:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 批量移动节点（拖拽）
+     */
+    async moveNodes(
+      nodeIds: string[],
+      targetId: string,
+      dropType: DropType
+    ): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
+      if (nodeIds.length === 0) {
+        throw new Error('没有选中任何节点')
+      }
+
+      // 如果只有一个节点，使用单节点移动方法
+      if (nodeIds.length === 1) {
+        const singleNodeId = nodeIds[0]
+        if (!singleNodeId) {
+          throw new Error('节点 ID 无效')
+        }
+        return this.moveNode(singleNodeId, targetId, dropType)
+      }
+
+      try {
+        // 查找所有要移动的节点
+        const findNode = (nodes: ActiveBlueprintNode[], targetId: string): ActiveBlueprintNode | null => {
+          for (const node of nodes) {
+            if (node.id === targetId) {
+              return node
+            }
+            if (node.children) {
+              const found = findNode(node.children, targetId)
+              if (found) {
+                return found
+              }
+            }
+          }
+          return null
+        }
+
+        const nodesToMove: ActiveBlueprintNode[] = []
+        for (const nodeId of nodeIds) {
+          const node = findNode(this.treeData, nodeId)
+          if (!node) {
+            throw new Error(`节点不存在: ${nodeId}`)
+          }
+          nodesToMove.push(node)
+        }
+
+        // 查找目标节点
+        const target = findNode(this.treeData, targetId)
+        if (!target) {
+          throw new Error('目标节点不存在')
+        }
+
+        // 防止拖拽到自己内部：检查所有要移动的节点都不能是目标节点的子节点
+        const isDescendant = (parent: ActiveBlueprintNode, childId: string): boolean => {
+          if (parent.id === childId) {
+            return true
+          }
+          if (parent.children) {
+            for (const child of parent.children) {
+              if (isDescendant(child, childId)) {
+                return true
+              }
+            }
+          }
+          return false
+        }
+
+        // 检查：不能拖动目标节点到自己的子节点中
+        for (const node of nodesToMove) {
+          if (isDescendant(node, targetId)) {
+            throw new Error(`不能将节点"${node.name}"拖拽到自己的子节点中`)
+          }
+        }
+
+        // 检查：如果拖入分组内部，目标必须是分组节点
+        if (dropType === 'inner') {
+          if (target.type !== 'group') {
+            throw new Error('只能拖拽到分组节点内部')
+          }
+          if (!target.children) {
+            target.children = []
+          }
+        }
+
+        // 查找父节点数组的工具函数
+        const findParentArray = (nodes: ActiveBlueprintNode[], targetId: string, parent: ActiveBlueprintNode[] | null = null): ActiveBlueprintNode[] | null => {
+          for (const node of nodes) {
+            if (node.id === targetId) {
+              return parent || this.treeData
+            }
+            if (node.children) {
+              const found = findParentArray(node.children, targetId, node.children)
+              if (found) {
+                return found
+              }
+            }
+          }
+          return null
+        }
+
+        // 从原位置移除所有节点（按逆序移除，避免索引问题）
+        const findAndRemove = (nodes: ActiveBlueprintNode[], nodeIdToRemove: string): boolean => {
+          for (let i = 0; i < nodes.length; i++) {
+            const currentNode = nodes[i]
+            if (!currentNode) {
+              continue
+            }
+            if (currentNode.id === nodeIdToRemove) {
+              nodes.splice(i, 1)
+              return true
+            }
+            const children = currentNode.children
+            if (children) {
+              if (findAndRemove(children, nodeIdToRemove)) {
+                return true
+              }
+            }
+          }
+          return false
+        }
+
+        // 按逆序移除节点，避免索引问题
+        const nodeIdsToRemove = [...nodeIds].reverse()
+        for (const nodeIdToRemove of nodeIdsToRemove) {
+          findAndRemove(this.treeData, nodeIdToRemove)
+        }
+
+        // 根据 dropType 插入到新位置
+        if (dropType === 'inner') {
+          // 拖入分组内部，按原顺序添加到目标分组
+          target.children!.push(...nodesToMove)
+        } else {
+          // 拖到目标节点前/后
+          const targetParentArray = findParentArray(this.treeData, targetId)
+          if (!targetParentArray) {
+            throw new Error('无法找到目标节点的父节点')
+          }
+
+          const targetIndex = targetParentArray.findIndex(
+            (child) => child.id === targetId
+          )
+          if (targetIndex === -1) {
+            throw new Error('目标节点未在父节点中找到')
+          }
+
+          // 如果拖到目标节点前，在目标位置插入；如果拖到后面，在目标位置+1插入
+          const insertIndex = dropType === 'before' ? targetIndex : targetIndex + 1
+          // 按原顺序插入（nodesToMove 保持原顺序）
+          targetParentArray.splice(insertIndex, 0, ...nodesToMove)
+        }
+
+        // 更新 rootNode
+        this.rootNode = {
+          id: 'root',
+          name: '根分组',
+          type: 'group',
+          children: this.treeData,
+        }
+
+        // 保存配置
+        await this.saveCurrentConfig()
+      } catch (error) {
+        console.error('Failed to move nodes:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 移动节点（拖拽）- 单个节点
      */
     async moveNode(
       nodeId: string,

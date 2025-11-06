@@ -11,16 +11,18 @@
       :default-expanded-keys="expandedKeys"
       :default-checked-keys="checkedKeys"
       @node-drop="handleNodeDrop as any"
-      @node-contextmenu="handleContextMenu"
       @check="handleCheck"
     >
       <template #default="{ node, data }">
         <TreeNode
+          :ref="(el) => { if (el && typeof el !== 'string') treeNodeRefs[data.id] = el as InstanceType<typeof TreeNode> }"
           :node="node"
           :data="data"
           @delete="handleDelete"
           @show-details="handleShowDetails"
           @use="handleUse"
+          @rename="handleRename"
+          @create-group="handleCreateGroup"
         />
       </template>
     </el-tree>
@@ -43,12 +45,12 @@ interface TreeNode {
 }
 
 const emit = defineEmits<{
-  (e: 'create-group', parentId: string): void
   (e: 'show-details', nodeId: string): void
 }>()
 
 const store = useActiveBlueprintStore()
 const treeRef = ref<InstanceType<typeof ElTree>>()
+const treeNodeRefs = ref<Record<string, InstanceType<typeof TreeNode>>>({})
 
 const treeData = computed(() => {
   // Element Plus Tree 需要数组，返回根节点的 children
@@ -80,25 +82,37 @@ const handleNodeDrop = async (
   try {
     const dragData = draggingNode.data
     const dropData = dropNode.data
-    await store.moveNode(
-      dragData.id,
-      dropData.id,
-      dropType
-    )
+    
+    // 检查是否有多个选中节点，且拖动的节点也在选中列表中
+    const currentCheckedKeys = store.checkedKeys
+    const hasMultipleChecked = currentCheckedKeys.length > 1
+    const isDraggedNodeChecked = currentCheckedKeys.includes(dragData.id)
+    
+    if (hasMultipleChecked && isDraggedNodeChecked) {
+      // 批量移动：移动所有选中的节点（不包括目标节点本身）
+      const nodeIdsToMove = currentCheckedKeys.filter(
+        (id) => id !== dropData.id // 排除目标节点
+      )
+      
+      if (nodeIdsToMove.length > 0) {
+        await store.moveNodes(nodeIdsToMove, dropData.id, dropType)
+        // 移动后清除选中状态
+        store.checkedKeys = []
+      }
+    } else {
+      // 单个节点移动
+      await store.moveNode(dragData.id, dropData.id, dropType)
+    }
   } catch (error) {
     console.error('Failed to move node:', error)
+    void ElMessageBox.alert(
+      error instanceof Error ? error.message : '移动节点失败',
+      '错误',
+      { type: 'error' }
+    )
   }
 }
 
-const handleContextMenu = (
-  event: Event,
-  data: ActiveBlueprintNode
-) => {
-  if (data.type === 'group') {
-    // 显示右键菜单
-    emit('create-group', data.id)
-  }
-}
 
 const handleCheck = (
   data: ActiveBlueprintNode,
@@ -160,7 +174,7 @@ const handleDelete = async (nodeId: string) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     if (errorMessage.includes('不允许删除')) {
-      ElMessageBox.alert(errorMessage, '提示', {
+      void ElMessageBox.alert(errorMessage, '提示', {
         type: 'warning',
       })
     } else {
@@ -175,6 +189,32 @@ const handleShowDetails = (nodeId: string) => {
 
 const handleUse = (nodeId: string) => {
   store.useBlueprint(nodeId)
+}
+
+const handleRename = async (nodeId: string, newName: string) => {
+  try {
+    await store.renameNode(nodeId, newName)
+  } catch (error) {
+    console.error('Failed to rename node:', error)
+    void ElMessageBox.alert(
+      error instanceof Error ? error.message : '重命名失败',
+      '错误',
+      { type: 'error' }
+    )
+  }
+}
+
+const handleCreateGroup = async (nodeId: string) => {
+  try {
+    await store.createGroup(nodeId, null)
+  } catch (error) {
+    console.error('Failed to create group:', error)
+    void ElMessageBox.alert(
+      error instanceof Error ? error.message : '创建分组失败',
+      '错误',
+      { type: 'error' }
+    )
+  }
 }
 </script>
 
@@ -208,6 +248,15 @@ const handleUse = (nodeId: string) => {
   height: auto !important;
   min-height: 26px; // Element Plus 默认最小高度
   line-height: 26px;
+  display: flex !important; // 确保使用 flex 布局
+  
+  // 确保 el-dropdown 填满宽度，不影响布局
+  > .el-dropdown {
+    display: flex !important;
+    flex: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
 }
 
 // 蓝图节点高度通过 TreeNode 组件内的样式设置（56px）

@@ -12,7 +12,6 @@
     <!-- 内容区域 -->
     <TreeView
       v-if="currentView === 'tree'"
-      @create-group="handleCreateGroup"
       @show-details="handleShowDetails"
     />
     <div v-else class="icon-view-placeholder">
@@ -31,14 +30,6 @@ import { useActiveBlueprintStore } from '../../stores/ActiveBlueprint'
 const store = useActiveBlueprintStore()
 
 const currentView = computed(() => store.currentView)
-
-const handleCreateGroup = async (parentId: string) => {
-  try {
-    await store.createGroup(parentId, '新分组')
-  } catch (error) {
-    console.error('Failed to create group:', error)
-  }
-}
 
 const handleShowDetails = (nodeId: string) => {
   // TODO: 实现详细信息对话框
