@@ -36,3 +36,6 @@ Thumbs.db
 
 # spectory
 .specstory
+
+# exe
+*AutomationService.exe
