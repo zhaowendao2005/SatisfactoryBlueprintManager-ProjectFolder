@@ -1,4 +1,4 @@
-import type { ActiveBlueprintNode, ActiveBlueprintNodeWithTags, TagDefinition } from '../types'
+import type { ActiveBlueprintNode, ActiveBlueprintNodeWithTags, TagDefinition, ActiveTagsMap } from '../types'
 
 /**
  * 提取目录路径（不含文件名）
@@ -167,16 +167,21 @@ export function extractPathTags(blueprints: ActiveBlueprintNodeWithTags[]): TagD
 }
 
 /**
- * 统一筛选函数（路径标签和用户标签合并处理）
+ * 统一筛选函数（支持与、或、非三种逻辑）
  * @param blueprints 蓝图列表
- * @param activeTags 激活的标签 ID 集合（包含路径标签和用户标签）
- * @param logicMode 统一的逻辑模式（与/或）
+ * @param activeTags 激活的标签映射（key: 标签ID, value: 逻辑模式 'and' | 'or' | 'not'）
  * @returns 筛选后的蓝图列表
+ * 
+ * @逻辑说明：
+ * 1. 非(NOT)逻辑：蓝图不能匹配任何"非"标签（优先级最高）
+ * 2. 与(AND)逻辑：蓝图必须匹配所有"与"标签
+ * 3. 或(OR)逻辑：蓝图需要匹配至少一个"或"标签（如果有"或"标签）
+ * 
+ * 优先级：非 > 与 > 或
  */
 export function filterBlueprintsByTags(
   blueprints: ActiveBlueprintNodeWithTags[],
-  activeTags: Set<string>,
-  logicMode: 'and' | 'or'
+  activeTags: ActiveTagsMap
 ): ActiveBlueprintNodeWithTags[] {
   if (activeTags.size === 0) {
     return blueprints
@@ -185,8 +190,6 @@ export function filterBlueprintsByTags(
   return blueprints.filter((blueprint) => {
     const blueprintPath = blueprint.directoryPath || ''
     const userTags = blueprint.tags || []
-
-    const tagArray = Array.from(activeTags)
 
     // 辅助函数：检查标签是否匹配
     const matchesTag = (tagId: string): boolean => {
@@ -201,12 +204,50 @@ export function filterBlueprintsByTags(
       return userTags.includes(tagId)
     }
 
-    if (logicMode === 'and') {
-      // 与逻辑：蓝图必须匹配所有选中的标签
-      return tagArray.every(matchesTag)
-    } else {
-      // 或逻辑：蓝图只需匹配至少一个选中的标签
-      return tagArray.some(matchesTag)
+    // 分组：与、或、非
+    const andTags: string[] = []
+    const orTags: string[] = []
+    const notTags: string[] = []
+
+    activeTags.forEach((logic, tagId) => {
+      if (logic === 'and') {
+        andTags.push(tagId)
+      } else if (logic === 'or') {
+        orTags.push(tagId)
+      } else if (logic === 'not') {
+        notTags.push(tagId)
+      }
+    })
+
+    // 1. 非(NOT)逻辑：蓝图不能匹配任何"非"标签（优先级最高）
+    if (notTags.length > 0) {
+      const matchesAnyNot = notTags.some(matchesTag)
+      if (matchesAnyNot) {
+        return false // 匹配了"非"标签，排除
+      }
     }
+
+    // 2. 与(AND)逻辑：蓝图必须匹配所有"与"标签
+    if (andTags.length > 0) {
+      const matchesAllAnd = andTags.every(matchesTag)
+      if (!matchesAllAnd) {
+        return false // 没有匹配所有"与"标签，排除
+      }
+    }
+
+    // 3. 或(OR)逻辑：蓝图需要匹配至少一个"或"标签（如果有"或"标签）
+    if (orTags.length > 0) {
+      const matchesAnyOr = orTags.some(matchesTag)
+      if (!matchesAnyOr) {
+        return false // 没有匹配任何"或"标签，排除
+      }
+    }
+
+    // 如果只有"与"标签，已经在上面的逻辑中处理了
+    // 如果只有"或"标签，已经在上面的逻辑中处理了
+    // 如果只有"非"标签，已经在上面的逻辑中处理了
+    // 如果混合使用，按照优先级处理
+
+    return true
   })
 }

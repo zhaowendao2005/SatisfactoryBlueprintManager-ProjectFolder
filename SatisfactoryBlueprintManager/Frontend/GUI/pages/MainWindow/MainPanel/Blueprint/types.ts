@@ -96,11 +96,12 @@ export interface BlueprintSource {
 }
 
 /**
- * 蓝图使用事件
+ * 标签逻辑模式
  */
-export interface BlueprintUsageEvent {
-  blueprintId: string
-  blueprintPath: string
-  timestamp: number
-}
+export type TagLogicMode = 'and' | 'or' | 'not'
+
+/**
+ * 激活标签映射（key: 标签ID, value: 逻辑模式）
+ */
+export type ActiveTagsMap = Map<string, TagLogicMode>
 

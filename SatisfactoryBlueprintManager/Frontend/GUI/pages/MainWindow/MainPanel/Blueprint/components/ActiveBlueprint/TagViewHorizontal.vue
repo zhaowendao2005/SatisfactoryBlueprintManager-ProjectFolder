@@ -12,9 +12,7 @@
             :path-tag-tree="pathTagTree"
             :user-tags="userTags"
             :active-tags="activeTags"
-            :logic-mode="logicMode"
             @update:active-tags="handleActiveTagsChange"
-            @update:logic-mode="handleLogicModeChange"
             @delete-tag="handleDeleteTag"
           />
         </div>
@@ -34,14 +32,22 @@
             @create-tag="handleCreateTag"
           />
 
-          <!-- 栏数控制器 -->
-          <ColumnControl v-model:columns="columnCount" />
+          <!-- 布局模式控制器 -->
+          <LayoutModeControl 
+            v-model:layout-mode="layoutMode"
+            v-model:card-columns="columnCount"
+          />
 
           <!-- 蓝图卡片网格容器 -->
-          <div class="blueprint-grid-container">
+          <div 
+            ref="gridContainerRef"
+            class="blueprint-grid-container"
+            @mousedown="handleMouseDown"
+          >
+            <!-- 卡片布局 -->
             <div
-              v-if="filteredBlueprints.length > 0"
-              class="blueprint-grid"
+              v-if="layoutMode === 'card' && filteredBlueprints.length > 0"
+              class="blueprint-grid blueprint-grid-card"
               :class="`columns-${columnCount}`"
             >
               <BlueprintCard
@@ -56,9 +62,35 @@
               />
             </div>
 
+            <!-- 桌面布局 -->
+            <div
+              v-else-if="layoutMode === 'desktop' && filteredBlueprints.length > 0"
+              class="blueprint-grid blueprint-grid-desktop"
+            >
+              <BlueprintDesktopIcon
+                v-for="blueprint in filteredBlueprints"
+                :key="blueprint.id"
+                :ref="(el: any) => { if (el) iconRefs.set(blueprint.id, el) }"
+                :blueprint="blueprint"
+                :batch-mode="batchMode"
+                :is-selected="selectedBlueprints.has(blueprint.id)"
+                @toggle-select="handleToggleSelect"
+                @use-blueprint="handleUseBlueprint"
+                @mousedown="handleIconMouseDown"
+              />
+            </div>
+
+            <!-- 空状态 -->
             <div v-else class="empty-state">
               <el-empty description="没有找到符合条件的蓝图" />
             </div>
+
+            <!-- 框选选择框（仅桌面布局 + 批量模式） -->
+            <div
+              v-if="layoutMode === 'desktop' && batchMode && isSelecting"
+              class="selection-box"
+              :style="selectionBoxStyle"
+            />
           </div>
         </div>
       </template>
@@ -67,17 +99,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { TagDefinition, ActiveBlueprintNodeWithTags } from '../../types'
+import type { TagDefinition, ActiveBlueprintNodeWithTags, ActiveTagsMap } from '../../types'
 import { flattenBlueprintTree, filterBlueprintsByTags, buildPathTagTree } from '../../utils/tagHelpers'
 import { useActiveBlueprintStore } from '../../stores/ActiveBlueprint'
 import { useGlobalTagsStore } from '../../stores/GlobalTags'
 import CustomSplitter from './CustomSplitter.vue'
 import TagFilter from './TagView/TagFilter.vue'
 import BatchOperationBar from './TagView/BatchOperationBar.vue'
-import ColumnControl from './TagView/ColumnControl.vue'
+import LayoutModeControl from './TagView/LayoutModeControl.vue'
 import BlueprintCard from './TagView/BlueprintCard.vue'
+import BlueprintDesktopIcon from './TagView/BlueprintDesktopIcon.vue'
 
 const activeBlueprintStore = useActiveBlueprintStore()
 const globalTagsStore = useGlobalTagsStore()
@@ -86,13 +119,30 @@ const globalTagsStore = useGlobalTagsStore()
 const splitterModel = ref(300) // 默认左侧 300px
 
 // 状态管理
-const activeTags = ref<Set<string>>(new Set())
-const logicMode = ref<'and' | 'or'>('and')
+const activeTags = ref<ActiveTagsMap>(new Map())
 const batchMode = ref(false)
 const selectedBlueprints = ref<Set<string>>(new Set())
 
-// 栏数控制（持久化到 localStorage）
+// 🆕 框选相关状态
+const gridContainerRef = ref<HTMLElement | null>(null)
+const iconRefs = new Map<string, any>()
+const isSelecting = ref(false)
+const selectionStart = ref({ x: 0, y: 0 })
+const selectionEnd = ref({ x: 0, y: 0 })
+const initialSelectedIds = ref<Set<string>>(new Set())
+// 🆕 性能优化：缓存图标位置
+const iconPositionsCache = new Map<string, { x1: number; y1: number; x2: number; y2: number }>()
+let rafId: number | null = null
+
+// 布局模式控制（持久化到 localStorage）
+const layoutMode = ref<'card' | 'desktop'>(
+  (localStorage.getItem('tagView:layoutMode') as 'card' | 'desktop') || 'card'
+)
 const columnCount = ref(Number(localStorage.getItem('tagView:columnCount')) || 3)
+
+watch(layoutMode, (newValue) => {
+  localStorage.setItem('tagView:layoutMode', newValue)
+})
 
 watch(columnCount, (newValue) => {
   localStorage.setItem('tagView:columnCount', String(newValue))
@@ -145,16 +195,27 @@ const tags = computed<TagDefinition[]>(() => {
 
 // 根据标签筛选蓝图
 const filteredBlueprints = computed(() => {
-  return filterBlueprintsByTags(allBlueprints.value, activeTags.value, logicMode.value)
+  return filterBlueprintsByTags(allBlueprints.value, activeTags.value)
+})
+
+// 🆕 选择框样式
+const selectionBoxStyle = computed(() => {
+  const x1 = Math.min(selectionStart.value.x, selectionEnd.value.x)
+  const y1 = Math.min(selectionStart.value.y, selectionEnd.value.y)
+  const x2 = Math.max(selectionStart.value.x, selectionEnd.value.x)
+  const y2 = Math.max(selectionStart.value.y, selectionEnd.value.y)
+  
+  return {
+    left: `${x1}px`,
+    top: `${y1}px`,
+    width: `${x2 - x1}px`,
+    height: `${y2 - y1}px`,
+  }
 })
 
 // 事件处理
-const handleActiveTagsChange = (tags: Set<string>): void => {
+const handleActiveTagsChange = (tags: ActiveTagsMap): void => {
   activeTags.value = tags
-}
-
-const handleLogicModeChange = (mode: 'and' | 'or'): void => {
-  logicMode.value = mode
 }
 
 const handleToggleBatchMode = (): void => {
@@ -292,6 +353,222 @@ const handleDeleteTag = async (tagId: string): Promise<void> => {
     ElMessage.error(error instanceof Error ? error.message : '删除标签失败')
   }
 }
+
+// 🆕 框选开始（从容器空白处）
+const handleMouseDown = (event: MouseEvent): void => {
+  // 只在桌面布局 + 批量模式下启用
+  if (layoutMode.value !== 'desktop' || !batchMode.value) return
+  
+  // 只响应左键，且点击的是容器本身或 grid（不是图标）
+  if (event.button !== 0) return
+  const target = event.target as HTMLElement
+  if (!target.classList.contains('blueprint-grid-container') && 
+      !target.classList.contains('blueprint-grid-desktop')) {
+    return
+  }
+  
+  startSelection(event)
+}
+
+// 🆕 框选开始（从图标上）
+const handleIconMouseDown = (event: MouseEvent): void => {
+  // 只在桌面布局 + 批量模式下启用
+  if (layoutMode.value !== 'desktop' || !batchMode.value) return
+  
+  // 只响应左键
+  if (event.button !== 0) return
+  
+  // 记录按下位置，等待判断是否是拖动
+  const startX = event.clientX
+  const startY = event.clientY
+  let hasStartedSelection = false
+  
+  const handleMove = (e: MouseEvent): void => {
+    const dx = Math.abs(e.clientX - startX)
+    const dy = Math.abs(e.clientY - startY)
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    
+    // 如果移动距离超过 5px，开始框选
+    if (distance > 5 && !hasStartedSelection) {
+      hasStartedSelection = true
+      // 移除临时监听器
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleUp)
+      
+      // 使用当前鼠标位置开始框选
+      const container = gridContainerRef.value
+      if (!container) return
+      
+      const rect = container.getBoundingClientRect()
+      
+      isSelecting.value = true
+      selectionStart.value = {
+        x: startX - rect.left + container.scrollLeft,
+        y: startY - rect.top + container.scrollTop,
+      }
+      selectionEnd.value = {
+        x: e.clientX - rect.left + container.scrollLeft,
+        y: e.clientY - rect.top + container.scrollTop,
+      }
+      
+      // 记录当前已选中的项（用于 Shift 键累加选择）
+      initialSelectedIds.value = new Set(selectedBlueprints.value)
+      
+      // 🆕 性能优化：缓存所有图标的位置
+      cacheIconPositions()
+      
+      // 开始正常的框选移动和结束监听
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    }
+  }
+  
+  const handleUp = (): void => {
+    document.removeEventListener('mousemove', handleMove)
+    document.removeEventListener('mouseup', handleUp)
+  }
+  
+  document.addEventListener('mousemove', handleMove)
+  document.addEventListener('mouseup', handleUp)
+}
+
+// 🆕 统一的框选开始逻辑
+const startSelection = (event: MouseEvent): void => {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  const container = gridContainerRef.value
+  if (!container) return
+  
+  const rect = container.getBoundingClientRect()
+  
+  isSelecting.value = true
+  selectionStart.value = {
+    x: event.clientX - rect.left + container.scrollLeft,
+    y: event.clientY - rect.top + container.scrollTop,
+  }
+  selectionEnd.value = { ...selectionStart.value }
+  
+  // 记录当前已选中的项（用于 Shift 键累加选择）
+  initialSelectedIds.value = new Set(selectedBlueprints.value)
+  
+  // 🆕 性能优化：缓存所有图标的位置
+  cacheIconPositions()
+  
+  document.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseup', handleMouseUp)
+}
+
+// 🆕 性能优化：缓存图标位置
+const cacheIconPositions = (): void => {
+  const container = gridContainerRef.value
+  if (!container) return
+  
+  const containerRect = container.getBoundingClientRect()
+  iconPositionsCache.clear()
+  
+  // 一次性计算所有图标位置
+  filteredBlueprints.value.forEach(blueprint => {
+    const iconEl = iconRefs.get(blueprint.id)?.$el
+    if (!iconEl) return
+    
+    const iconRect = iconEl.getBoundingClientRect()
+    
+    // 转换为相对于容器的坐标（考虑滚动）
+    const iconX1 = iconRect.left - containerRect.left + container.scrollLeft
+    const iconY1 = iconRect.top - containerRect.top + container.scrollTop
+    
+    iconPositionsCache.set(blueprint.id, {
+      x1: iconX1,
+      y1: iconY1,
+      x2: iconX1 + iconRect.width,
+      y2: iconY1 + iconRect.height,
+    })
+  })
+}
+
+// 🆕 框选移动（使用 RAF 节流）
+const handleMouseMove = (event: MouseEvent): void => {
+  if (!isSelecting.value) return
+  
+  // 取消之前的 RAF
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+  }
+  
+  // 保存事件坐标（避免在 RAF 回调中 event 过期）
+  const clientX = event.clientX
+  const clientY = event.clientY
+  
+  // 使用 RAF 节流
+  rafId = requestAnimationFrame(() => {
+    const container = gridContainerRef.value
+    if (!container) return
+    
+    const rect = container.getBoundingClientRect()
+    
+    selectionEnd.value = {
+      x: clientX - rect.left + container.scrollLeft,
+      y: clientY - rect.top + container.scrollTop,
+    }
+  })
+}
+
+// 🆕 框选结束
+const handleMouseUp = (event: MouseEvent): void => {
+  if (!isSelecting.value) return
+  
+  // 取消未完成的 RAF
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+  
+  // 松手时统一计算选中状态
+  updateSelection(event.shiftKey)
+  
+  isSelecting.value = false
+  
+  // 🆕 清理缓存
+  iconPositionsCache.clear()
+  
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', handleMouseUp)
+}
+
+// 🆕 更新选中状态（优化版）
+const updateSelection = (additive: boolean): void => {
+  const x1 = Math.min(selectionStart.value.x, selectionEnd.value.x)
+  const y1 = Math.min(selectionStart.value.y, selectionEnd.value.y)
+  const x2 = Math.max(selectionStart.value.x, selectionEnd.value.x)
+  const y2 = Math.max(selectionStart.value.y, selectionEnd.value.y)
+  
+  const newSelected = additive ? new Set(initialSelectedIds.value) : new Set<string>()
+  
+  // 🆕 性能优化：使用缓存的位置进行碰撞检测
+  for (const blueprint of filteredBlueprints.value) {
+    const pos = iconPositionsCache.get(blueprint.id)
+    if (!pos) continue
+    
+    // 碰撞检测：矩形相交
+    const intersects = !(pos.x2 < x1 || pos.x1 > x2 || pos.y2 < y1 || pos.y1 > y2)
+    
+    if (intersects) {
+      newSelected.add(blueprint.id)
+    }
+  }
+  
+  selectedBlueprints.value = newSelected
+}
+
+// 清理
+onUnmounted(() => {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+  }
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', handleMouseUp)
+})
 </script>
 
 <style scoped lang="scss">
@@ -351,6 +628,7 @@ const handleDeleteTag = async (tagId: string): Promise<void> => {
     }
 
     .blueprint-grid-container {
+      position: relative; // 🆕 为选择框定位
       height: 500px;
       min-height: 500px;
       flex-shrink: 0;
@@ -371,7 +649,18 @@ const handleDeleteTag = async (tagId: string): Promise<void> => {
       }
     }
 
-    .blueprint-grid {
+    // 🆕 框选选择框样式
+    .selection-box {
+      position: absolute;
+      border: 2px solid #409eff;
+      background-color: rgba(64, 158, 255, 0.1);
+      pointer-events: none;
+      z-index: 100;
+      transition: none;
+    }
+
+    // 卡片布局样式
+    .blueprint-grid-card {
       display: grid;
       gap: 20px;
       padding-bottom: 20px;
@@ -405,6 +694,26 @@ const handleDeleteTag = async (tagId: string): Promise<void> => {
         &.columns-4 {
           grid-template-columns: repeat(3, 1fr) !important;
         }
+      }
+    }
+
+    // 桌面布局样式
+    .blueprint-grid-desktop {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+      gap: 12px;
+      padding: 12px 0 20px;
+      width: 100%;
+      min-height: 100%;
+
+      @media (max-width: 640px) {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 8px;
+      }
+
+      @media (min-width: 1200px) {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 16px;
       }
     }
 

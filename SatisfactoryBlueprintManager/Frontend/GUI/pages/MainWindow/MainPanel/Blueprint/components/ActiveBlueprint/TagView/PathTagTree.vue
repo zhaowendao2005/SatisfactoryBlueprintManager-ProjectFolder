@@ -8,6 +8,7 @@
       :expanded-keys="expandedKeys"
       :parent-path="''"
       @toggle-tag="handleToggleTag"
+      @change-logic="handleChangeLogic"
       @toggle-expand="handleToggleExpand"
     />
   </div>
@@ -17,16 +18,18 @@
 import { ref } from 'vue'
 import PathTagTreeNode from './PathTagTreeNode.vue'
 import type { PathTagTreeNode as PathTagTreeNodeType } from '../../../utils/tagHelpers'
+import type { ActiveTagsMap } from '../../../types'
 
 interface Props {
   tree: PathTagTreeNodeType[]
-  activeTags: Set<string>
+  activeTags: ActiveTagsMap
 }
 
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'toggle-tag', tagId: string): void
+  (e: 'change-logic', tagId: string, logic: 'and' | 'or' | 'not'): void
 }>()
 
 // 展开的节点 ID 集合
@@ -34,6 +37,10 @@ const expandedKeys = ref<Set<string>>(new Set<string>())
 
 const handleToggleTag = (tagId: string): void => {
   emit('toggle-tag', tagId)
+}
+
+const handleChangeLogic = (tagId: string, logic: 'and' | 'or' | 'not'): void => {
+  emit('change-logic', tagId, logic)
 }
 
 // 手风琴模式：展开/折叠节点

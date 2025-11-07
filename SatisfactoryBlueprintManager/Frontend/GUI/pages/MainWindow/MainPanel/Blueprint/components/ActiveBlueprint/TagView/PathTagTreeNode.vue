@@ -16,11 +16,16 @@
       
       <!-- 标签内容 -->
       <el-tag
+        :type="getTagType()"
         :effect="isActive ? 'dark' : 'plain'"
         class="path-tag-item"
         @click="handleClick"
+        @contextmenu.prevent="handleContextMenu"
       >
         <span class="tag-content">
+          <span v-if="isActive" class="logic-badge">
+            {{ getLogicLabel() }}
+          </span>
           <el-icon v-if="hasChildren" class="folder-icon">
             <Folder />
           </el-icon>
@@ -42,6 +47,7 @@
         :expanded-keys="expandedKeys"
         :parent-path="node.fullPath"
         @toggle-tag="handleToggleTag"
+        @change-logic="handleChangeLogic"
         @toggle-expand="handleToggleExpand"
       />
     </div>
@@ -52,10 +58,11 @@
 import { computed } from 'vue'
 import { Folder, ArrowRight, ArrowDown } from '@element-plus/icons-vue'
 import type { PathTagTreeNode } from '../../../utils/tagHelpers'
+import type { ActiveTagsMap } from '../../../types'
 
 interface Props {
   node: PathTagTreeNode
-  activeTags: Set<string>
+  activeTags: ActiveTagsMap
   expandedKeys: Set<string>
   parentPath: string
 }
@@ -64,10 +71,29 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'toggle-tag', tagId: string): void
+  (e: 'change-logic', tagId: string, logic: 'and' | 'or' | 'not'): void
   (e: 'toggle-expand', nodeId: string, parentPath: string): void
 }>()
 
 const isActive = computed(() => props.activeTags.has(props.node.id))
+
+const getLogicLabel = (): string => {
+  if (!isActive.value) return ''
+  const logic = props.activeTags.get(props.node.id)
+  if (logic === 'and') return '与'
+  if (logic === 'or') return '或'
+  if (logic === 'not') return '非'
+  return ''
+}
+
+const getTagType = (): string => {
+  if (!isActive.value) return ''
+  const logic = props.activeTags.get(props.node.id)
+  if (logic === 'and') return 'success'
+  if (logic === 'or') return 'primary'
+  if (logic === 'not') return 'danger'
+  return ''
+}
 
 const hasChildren = computed(() => {
   return props.node.children && props.node.children.length > 0
@@ -81,12 +107,44 @@ const handleClick = (): void => {
   emit('toggle-tag', props.node.id)
 }
 
+const handleContextMenu = (event: MouseEvent): void => {
+  if (!isActive.value) {
+    // 如果未激活，先激活为"或"
+    emit('toggle-tag', props.node.id)
+    return
+  }
+  
+  // 循环切换逻辑：或 -> 与 -> 非 -> 移除
+  const currentLogic = props.activeTags.get(props.node.id)
+  let nextLogic: 'and' | 'or' | 'not' | 'remove'
+  
+  if (currentLogic === 'or') {
+    nextLogic = 'and'
+  } else if (currentLogic === 'and') {
+    nextLogic = 'not'
+  } else if (currentLogic === 'not') {
+    nextLogic = 'remove'
+  } else {
+    nextLogic = 'or'
+  }
+  
+  if (nextLogic === 'remove') {
+    emit('toggle-tag', props.node.id)
+  } else {
+    emit('change-logic', props.node.id, nextLogic)
+  }
+}
+
 const handleExpandClick = (): void => {
   emit('toggle-expand', props.node.id, props.parentPath)
 }
 
 const handleToggleTag = (tagId: string): void => {
   emit('toggle-tag', tagId)
+}
+
+const handleChangeLogic = (tagId: string, logic: 'and' | 'or' | 'not'): void => {
+  emit('change-logic', tagId, logic)
 }
 
 const handleToggleExpand = (nodeId: string, parentPath: string): void => {
@@ -134,6 +192,13 @@ const handleToggleExpand = (nodeId: string, parentPath: string): void => {
       display: flex;
       align-items: center;
       gap: 4px;
+
+      .logic-badge {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 0 2px;
+        margin-right: 2px;
+      }
 
       .folder-icon {
         font-size: 14px;
