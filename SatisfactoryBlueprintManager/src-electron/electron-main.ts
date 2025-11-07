@@ -8,6 +8,7 @@ import { WindowService } from './Service/Window'
 import { WindowHandler } from './Ipc/WindowHandler'
 import { BlueprintHandler } from './Ipc/BlueprintHandler'
 import { registerConfigHandlers } from './Ipc/ConfigHandler'
+import { registerGlobalTagsHandlers } from './Ipc/GlobalTagsHandler'
 import { registerSyncHandlers } from './Ipc/SyncHandler'
 import { registerAutomationConfigHandlers } from './Ipc/AutomationConfigHandler'
 import { registerBlueprintInfoHandlers } from './Ipc/BlueprintInfoHandler'
@@ -40,6 +41,7 @@ async function createWindow(): Promise<void> {
   WindowHandler.register(mainWindow)
   BlueprintHandler.register()
   registerConfigHandlers()
+  registerGlobalTagsHandlers()
   registerSyncHandlers()
   registerAutomationConfigHandlers(mainWindow)
   registerBlueprintInfoHandlers()

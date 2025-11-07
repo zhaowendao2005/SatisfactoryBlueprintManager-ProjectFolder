@@ -8,6 +8,7 @@ import { buildEnhancedGroupStructure } from './ActiveBlueprint.group-builder'
 import { detectDuplicates, allocateColors } from './ActiveBlueprint.duplicate-detector'
 import { useBlueprintSourceStore } from '../BlueprintSource'
 import { extractDirectoryPath } from '../../utils/tagHelpers'
+import { useGlobalTagsStore } from '../GlobalTags'
 
 /**
  * ActiveBlueprint Store
@@ -27,7 +28,7 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     currentConfigId: null,
     configList: [],
     treeData: [],
-    tags: [],
+    // 注意：tags 字段已移除，标签管理已解耦到全局标签Store
     pathTagLevels: 3,  // 默认路径追踪级数
     // 重复检测相关状态
     duplicateMap: new Map(),
@@ -859,7 +860,7 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
           createdAt: Date.now(),
           updatedAt: Date.now(),
           pathTagLevels: 3,  // 默认路径追踪级数
-          tags: [],
+          // 注意：tags 字段已移除，标签关系存储在全局标签配置中
           tree: [{
             id: 'ungrouped',
             type: 'group',
@@ -896,7 +897,7 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
         // 3. 更新状态（确保类型正确）
         this.currentConfigId = configId
         this.treeData = configData.tree as ActiveBlueprintNode[]
-        this.tags = configData.tags || []
+        // 注意：tags 字段已移除，标签从全局标签Store加载
         this.pathTagLevels = configData.pathTagLevels || 3
         this.rootNode = {
           id: 'root',
@@ -948,7 +949,7 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
           createdAt: configData.createdAt,
           updatedAt: Date.now(),
           pathTagLevels: this.pathTagLevels,
-          tags: this.tags,
+          // 注意：tags 字段已移除，标签关系存储在全局标签配置中
           tree: serializedTree,
         }
 
@@ -1520,9 +1521,9 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     },
 
     /**
-     * 批量添加标签
-     * @param nodeIds 蓝图节点 ID 数组
-     * @param tagId 要添加的标签 ID
+     * 批量添加标签（适配器方法，委托给全局标签Store）
+     * @param nodeIds 节点ID数组（内部转换为 blueprintPath）
+     * @param tagId 标签ID
      */
     async batchAddTags(nodeIds: string[], tagId: string): Promise<void> {
       if (!this.hasActiveConfig()) {
@@ -1534,37 +1535,23 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
       }
 
       try {
-        // 查找所有节点并添加标签
-        const findAndUpdateNode = (nodes: ActiveBlueprintNode[]): void => {
-          for (const node of nodes) {
-            if (nodeIds.includes(node.id) && node.type === 'blueprint') {
-              // 确保 tags 数组存在
-              if (!node.tags) {
-                node.tags = []
-              }
-              // 如果标签不存在，则添加
-              if (!node.tags.includes(tagId)) {
-                node.tags.push(tagId)
-              }
-            }
-            if (node.children) {
-              findAndUpdateNode(node.children)
-            }
+        const globalTagsStore = useGlobalTagsStore()
+
+        // 🔑 关键：将节点ID转换为蓝图路径
+        const blueprintPaths: string[] = []
+        for (const nodeId of nodeIds) {
+          const node = this.findNodeById(nodeId)
+          if (node?.type === 'blueprint' && node.path) {
+            blueprintPaths.push(node.path)
           }
         }
 
-        findAndUpdateNode(this.treeData)
-
-        // 更新 rootNode
-        this.rootNode = {
-          id: 'root',
-          name: '根分组',
-          type: 'group',
-          children: this.treeData,
+        if (blueprintPaths.length === 0) {
+          throw new Error('没有找到有效的蓝图路径')
         }
 
-        // 保存配置
-        await this.saveCurrentConfig()
+        // 委托给全局Store
+        await globalTagsStore.batchAddTags(blueprintPaths, tagId)
       } catch (error) {
         console.error('Failed to batch add tags:', error)
         throw error
@@ -1572,9 +1559,9 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     },
 
     /**
-     * 批量移除标签
-     * @param nodeIds 蓝图节点 ID 数组
-     * @param tagId 要移除的标签 ID
+     * 批量移除标签（适配器方法，委托给全局标签Store）
+     * @param nodeIds 节点ID数组（内部转换为 blueprintPath）
+     * @param tagId 标签ID
      */
     async batchRemoveTags(nodeIds: string[], tagId: string): Promise<void> {
       if (!this.hasActiveConfig()) {
@@ -1586,39 +1573,23 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
       }
 
       try {
-        // 查找所有节点并移除标签
-        const findAndUpdateNode = (nodes: ActiveBlueprintNode[]): void => {
-          for (const node of nodes) {
-            if (nodeIds.includes(node.id) && node.type === 'blueprint') {
-              if (node.tags) {
-                const index = node.tags.indexOf(tagId)
-                if (index !== -1) {
-                  node.tags.splice(index, 1)
-                }
-                // 如果 tags 数组为空，可以删除该字段（可选）
-                if (node.tags.length === 0) {
-                  delete node.tags
-                }
-              }
-            }
-            if (node.children) {
-              findAndUpdateNode(node.children)
-            }
+        const globalTagsStore = useGlobalTagsStore()
+
+        // 🔑 关键：将节点ID转换为蓝图路径
+        const blueprintPaths: string[] = []
+        for (const nodeId of nodeIds) {
+          const node = this.findNodeById(nodeId)
+          if (node?.type === 'blueprint' && node.path) {
+            blueprintPaths.push(node.path)
           }
         }
 
-        findAndUpdateNode(this.treeData)
-
-        // 更新 rootNode
-        this.rootNode = {
-          id: 'root',
-          name: '根分组',
-          type: 'group',
-          children: this.treeData,
+        if (blueprintPaths.length === 0) {
+          throw new Error('没有找到有效的蓝图路径')
         }
 
-        // 保存配置
-        await this.saveCurrentConfig()
+        // 委托给全局Store
+        await globalTagsStore.batchRemoveTags(blueprintPaths, tagId)
       } catch (error) {
         console.error('Failed to batch remove tags:', error)
         throw error
@@ -1626,86 +1597,24 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     },
 
     /**
-     * 创建标签
+     * 创建标签（直接委托给全局标签Store）
      * @param name 标签名称
      * @param color 标签颜色
      */
     async createTag(name: string, color: string): Promise<void> {
-      if (!this.hasActiveConfig()) {
-        throw new Error('请先创建或选择一个配置')
-      }
-
-      if (!name || name.trim() === '') {
-        throw new Error('标签名称不能为空')
-      }
-
-      try {
-        // 检查标签是否已存在
-        const existingTag = this.tags.find((t) => t.name === name.trim())
-        if (existingTag) {
-          throw new Error('标签名称已存在')
-        }
-
-        // 生成标签 ID（使用时间戳 + 随机字符串）
-        const tagId = `tag-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-
-        // 添加标签
-        this.tags.push({
-          id: tagId,
-          name: name.trim(),
-          color: color || '#3B82F6',
-        })
-
-        // 保存配置
-        await this.saveCurrentConfig()
-      } catch (error) {
-        console.error('Failed to create tag:', error)
-        throw error
-      }
+      // 不再需要检查配置，标签是全局的
+      const globalTagsStore = useGlobalTagsStore()
+      await globalTagsStore.createTag(name, color)
     },
 
     /**
-     * 删除标签
+     * 删除标签（直接委托给全局标签Store）
      * @param tagId 标签 ID
      */
     async deleteTag(tagId: string): Promise<void> {
-      if (!this.hasActiveConfig()) {
-        throw new Error('请先创建或选择一个配置')
-      }
-
-      try {
-        // 查找标签索引
-        const tagIndex = this.tags.findIndex((t) => t.id === tagId)
-        if (tagIndex === -1) {
-          throw new Error('标签不存在')
-        }
-
-        // 从所有蓝图中移除该标签
-        const removeTagFromNodes = (nodes: ActiveBlueprintNode[]): void => {
-          for (const node of nodes) {
-            if (node.type === 'blueprint' && node.tags) {
-              const index = node.tags.indexOf(tagId)
-              if (index !== -1) {
-                node.tags.splice(index, 1)
-              }
-            }
-            if (node.children) {
-              removeTagFromNodes(node.children)
-            }
-          }
-        }
-
-        removeTagFromNodes(this.treeData)
-
-        // 删除标签
-        this.tags.splice(tagIndex, 1)
-
-        // 保存配置
-        await this.saveCurrentConfig()
-      } catch (error) {
-        console.error('Failed to delete tag:', error)
-        throw error
-      }
+      // 不再需要检查配置，标签是全局的
+      const globalTagsStore = useGlobalTagsStore()
+      await globalTagsStore.deleteTag(tagId)
     },
 
     /**

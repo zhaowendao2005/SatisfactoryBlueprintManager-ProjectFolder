@@ -56,11 +56,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { TagDefinition, ActiveBlueprintNodeWithTags } from '../../types'
 import { flattenBlueprintTree, filterBlueprintsByTags, buildPathTagTree } from '../../utils/tagHelpers'
 import { useActiveBlueprintStore } from '../../stores/ActiveBlueprint'
+import { useGlobalTagsStore } from '../../stores/GlobalTags'
 import TagFilter from './TagView/TagFilter.vue'
 import BatchOperationBar from './TagView/BatchOperationBar.vue'
 import BlueprintCard from './TagView/BlueprintCard.vue'
 
-const store = useActiveBlueprintStore()
+const activeBlueprintStore = useActiveBlueprintStore()
+const globalTagsStore = useGlobalTagsStore()
 
 // 状态管理
 const activeTags = ref<Set<string>>(new Set())
@@ -70,16 +72,21 @@ const selectedBlueprints = ref<Set<string>>(new Set())
 
 // 拍平树结构为一维蓝图数组（状态驱动：pathTagLevels 变化时自动重新计算）
 const allBlueprints = computed(() => {
-  return flattenBlueprintTree(store.treeData, store.pathTagLevels)
+  const blueprints = flattenBlueprintTree(
+    activeBlueprintStore.treeData,
+    activeBlueprintStore.pathTagLevels
+  )
+  
+  // 🔑 关键：从全局Store查询每个蓝图的标签
+  return blueprints.map(bp => ({
+    ...bp,
+    tags: bp.path ? globalTagsStore.getBlueprintTags(bp.path) : []
+  })) as ActiveBlueprintNodeWithTags[]
 })
 
-// 使用 Store 中的动态标签列表 + 路径标签
+// ✅ 标签列表从全局Store获取
 const userTags = computed<TagDefinition[]>(() => {
-  return store.tags.map((tag) => ({
-    id: tag.id,
-    name: tag.name,
-    color: tag.color,
-  }))
+  return globalTagsStore.getAllTags()
 })
 
 // 构建路径标签树
@@ -138,7 +145,7 @@ const handleToggleSelect = (id: string): void => {
 }
 
 const handleUseBlueprint = (id: string): void => {
-  store.useBlueprint(id)
+  activeBlueprintStore.useBlueprint(id)
 }
 
 const handleBatchAddTag = async (tagId: string): Promise<void> => {
@@ -164,7 +171,8 @@ const handleBatchAddTag = async (tagId: string): Promise<void> => {
 
   try {
     const nodeIds = Array.from(selectedBlueprints.value)
-    await store.batchAddTags(nodeIds, tagId)
+    // ✅ 标签操作仍使用 activeBlueprintStore（内部会委托给全局Store）
+    await activeBlueprintStore.batchAddTags(nodeIds, tagId)
     ElMessage.success(`已为 ${nodeIds.length} 个蓝图添加标签`)
     selectedBlueprints.value.clear()
   } catch (error) {
@@ -196,7 +204,8 @@ const handleBatchRemoveTag = async (tagId: string): Promise<void> => {
 
   try {
     const nodeIds = Array.from(selectedBlueprints.value)
-    await store.batchRemoveTags(nodeIds, tagId)
+    // ✅ 标签操作仍使用 activeBlueprintStore（内部会委托给全局Store）
+    await activeBlueprintStore.batchRemoveTags(nodeIds, tagId)
     ElMessage.success(`已从 ${nodeIds.length} 个蓝图中移除标签`)
     selectedBlueprints.value.clear()
   } catch (error) {
@@ -207,7 +216,8 @@ const handleBatchRemoveTag = async (tagId: string): Promise<void> => {
 
 const handleCreateTag = async (name: string, color: string): Promise<void> => {
   try {
-    await store.createTag(name, color)
+    // ✅ 标签操作仍使用 activeBlueprintStore（内部会委托给全局Store）
+    await activeBlueprintStore.createTag(name, color)
     ElMessage.success(`标签"${name}"创建成功`)
   } catch (error) {
     console.error('Failed to create tag:', error)
@@ -238,7 +248,8 @@ const handleDeleteTag = async (tagId: string): Promise<void> => {
       }
     )
 
-    await store.deleteTag(tagId)
+    // ✅ 标签操作仍使用 activeBlueprintStore（内部会委托给全局Store）
+    await activeBlueprintStore.deleteTag(tagId)
     ElMessage.success(`标签"${tag.name}"已删除`)
     
     // 如果该标签在筛选中，移除它

@@ -17,11 +17,7 @@ export interface ConfigFileData {
   createdAt: number
   updatedAt: number
   pathTagLevels?: number        // 路径追踪级数（默认 3，范围 1-6）
-  tags?: Array<{          // 配置中的标签列表
-    id: string           // 标签 ID
-    name: string         // 标签名称
-    color: string        // 标签颜色
-  }>
+  // 注意：tags 字段已移除，标签关系存储在全局标签配置中
   tree: Array<{
     id: string
     type: 'group' | 'blueprint'
@@ -30,7 +26,7 @@ export interface ConfigFileData {
     path?: string
     sourcePath?: string
     directoryPath?: string      // 目录路径（不含文件名）
-    tags?: string[]      // 蓝图的标签 ID 列表（只包含用户标签）
+    // 注意：tags 字段已移除，标签关系通过 blueprintPath 从全局标签Store查询
     children?: Array<{
       id: string
       type: 'group' | 'blueprint'
@@ -39,7 +35,7 @@ export interface ConfigFileData {
       path?: string
       sourcePath?: string
       directoryPath?: string    // 目录路径（不含文件名）
-      tags?: string[]    // 蓝图的标签 ID 列表（只包含用户标签）
+      // 注意：tags 字段已移除，标签关系通过 blueprintPath 从全局标签Store查询
       children?: unknown[]
     }>
   }>

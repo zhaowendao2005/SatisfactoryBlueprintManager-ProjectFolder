@@ -21,11 +21,13 @@ import ActiveBlueprint from './components/ActiveBlueprint/index.vue'
 import SyncProgressDialog from './components/Sync/SyncProgressDialog.vue'
 import { useBlueprintSourceStore } from './stores/BlueprintSource'
 import { useActiveBlueprintStore } from './stores/ActiveBlueprint'
+import { useGlobalTagsStore } from './stores/GlobalTags'
 import { useSyncOperationStore } from './stores/Sync/operation-store'
 import { useSyncConfigStore } from './stores/Sync/config-store'
 
 const blueprintSourceStore = useBlueprintSourceStore()
 const activeBlueprintStore = useActiveBlueprintStore()
+const globalTagsStore = useGlobalTagsStore()
 const syncOperationStore = useSyncOperationStore()
 const syncConfigStore = useSyncConfigStore()
 
@@ -45,6 +47,7 @@ onMounted(async () => {
     await Promise.all([
       blueprintSourceStore.loadRootNodes(),
       activeBlueprintStore.initializeConfig(), // 初始化配置（会加载配置列表和上次的配置）
+      globalTagsStore.initializeGlobalTags(), // 初始化全局标签
       syncConfigStore.loadConfig(), // 加载同步配置
     ])
   } catch (error) {

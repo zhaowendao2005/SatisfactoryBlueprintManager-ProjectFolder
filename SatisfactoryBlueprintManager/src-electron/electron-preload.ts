@@ -5,6 +5,7 @@
 import { exposeWindowAPI } from './Preload/window'
 import { exposeBlueprintAPI } from './Preload/blueprint'
 import { exposeConfigAPI } from './Preload/config'
+import { exposeGlobalTagsAPI } from './Preload/global-tags'
 import { exposeSyncAPI } from './Preload/sync'
 import { exposeAutomationConfigAPI } from './Preload/automation-config'
 import { exposeBlueprintInfoAPI } from './Preload/blueprint-info'
@@ -18,6 +19,9 @@ exposeBlueprintAPI()
 
 // 暴露配置管理 API
 exposeConfigAPI()
+
+// 暴露全局标签 API
+exposeGlobalTagsAPI()
 
 // 暴露同步 API
 exposeSyncAPI()

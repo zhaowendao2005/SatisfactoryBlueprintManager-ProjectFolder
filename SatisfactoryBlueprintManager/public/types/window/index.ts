@@ -190,6 +190,38 @@ export interface ElectronBlueprintInfoAPI {
 }
 
 /**
+ * 全局标签 Electron IPC API
+ * @注意事项 仅在 Electron 环境可用
+ */
+export interface ElectronGlobalTagsAPI {
+  /**
+   * 加载全局标签配置
+   */
+  loadGlobalTags(): Promise<{
+    version: string
+    tags: Array<{
+      id: string
+      name: string
+      color: string
+    }>
+    blueprintTags: Record<string, string[]>
+  }>
+
+  /**
+   * 保存全局标签配置
+   */
+  saveGlobalTags(data: {
+    version: string
+    tags: Array<{
+      id: string
+      name: string
+      color: string
+    }>
+    blueprintTags: Record<string, string[]>
+  }): Promise<void>
+}
+
+/**
  * 快捷键配置 Electron IPC API
  * @注意事项 仅在 Electron 环境可用
  */
@@ -217,6 +249,7 @@ declare global {
     electronAPI?: ElectronWindowAPI
     blueprintAPI?: ElectronBlueprintAPI
     configAPI?: ElectronConfigAPI
+    globalTagsAPI?: ElectronGlobalTagsAPI
     syncAPI?: ElectronSyncAPI
     blueprintInfoAPI?: ElectronBlueprintInfoAPI
     shortcutConfigAPI?: ElectronShortcutConfigAPI

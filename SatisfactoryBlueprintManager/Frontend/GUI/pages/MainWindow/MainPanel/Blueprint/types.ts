@@ -37,6 +37,7 @@ export type ActiveNodeType = 'group' | 'blueprint'
  * - blueprintId 用于取消激活时查找节点（无论节点在哪个分组下）
  * - sourcePath 用于去重，防止重复激活同一蓝图
  * - directoryPath 为目录路径（不含文件名），根据 pathTagLevels 配置提取
+ * - 标签关系已解耦到全局标签Store，通过 blueprintPath 查询
  */
 export interface ActiveBlueprintNode {
   id: string                    // 唯一标识
@@ -46,7 +47,6 @@ export interface ActiveBlueprintNode {
   path?: string                 // 蓝图完整路径（含文件名，仅蓝图节点）
   sourcePath?: string           // 原始蓝图路径（用于去重，仅蓝图节点）
   directoryPath?: string        // 目录路径（不含文件名，根据 pathTagLevels 提取，仅蓝图节点）
-  tags?: string[]               // 用户标签 ID 列表（仅蓝图节点，不含路径标签）
   children?: ActiveBlueprintNode[] // 子节点（仅分组节点）
 }
 
@@ -75,13 +75,14 @@ export interface TagDefinition {
 }
 
 /**
- * 扩展的激活蓝图节点（添加 tags 字段）
+ * 扩展的激活蓝图节点（添加 tags 字段，用于视图层临时使用）
  * @注意事项 
  * - tags 为标签 ID 数组，不包含路径标签（路径标签自动生成）
- * - 持久化时会序列化到配置文件
+ * - 此类型仅用于视图层，标签从全局标签Store查询后临时附加
+ * - 不持久化到配置文件
  */
 export interface ActiveBlueprintNodeWithTags extends ActiveBlueprintNode {
-  tags?: string[]     // 用户添加的标签 ID 列表
+  tags?: string[]     // 用户添加的标签 ID 列表（临时字段，从全局Store查询）
 }
 
 /**

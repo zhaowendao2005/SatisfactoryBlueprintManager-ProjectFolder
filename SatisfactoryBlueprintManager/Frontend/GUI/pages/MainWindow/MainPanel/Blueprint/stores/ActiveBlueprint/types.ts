@@ -55,7 +55,7 @@ export interface ActiveBlueprintState {
   currentConfigId: string | null  // 当前选中的配置 id
   configList: ConfigMeta[]         // 配置列表
   treeData: ActiveBlueprintNode[]  // 当前配置的树数据（不包含虚拟根节点）
-  tags: TagDefinitionInStore[]     // 当前配置的标签列表
+  // 注意：tags 字段已移除，标签管理已解耦到全局标签Store
   pathTagLevels: number            // 路径追踪级数（默认 3，范围 1-6）
   // 重复检测相关状态
   duplicateMap: DuplicateMap      // 重复蓝图映射表（响应式）
