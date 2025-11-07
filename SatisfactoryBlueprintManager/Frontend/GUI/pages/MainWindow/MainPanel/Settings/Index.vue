@@ -10,6 +10,7 @@
           :offset="70"
           @click="handleClick"
         >
+          <el-anchor-link href="#general-settings" title="通用设置" />
           <el-anchor-link href="#config-management" title="配置管理" />
           <el-anchor-link href="#automation-config" title="自动化配置" />
           <el-anchor-link href="#shortcut-config" title="快捷键配置" />
@@ -19,6 +20,14 @@
 
       <!-- 右侧内容区 -->
       <div ref="containerRef" class="content-area">
+        <!-- 通用设置卡片 -->
+        <section
+          id="general-settings"
+          class="content-section"
+        >
+          <GeneralSettingsCard />
+        </section>
+
         <!-- 配置管理卡片 -->
         <section
           id="config-management"
@@ -57,6 +66,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import GeneralSettingsCard from './components/GeneralSettingsCard.vue'
 import ConfigManagerCard from './components/ConfigManagerCard.vue'
 import AutomationConfigCard from './components/AutomationConfigCard.vue'
 import ShortcutConfigCard from './components/ShortcutConfigCard.vue'

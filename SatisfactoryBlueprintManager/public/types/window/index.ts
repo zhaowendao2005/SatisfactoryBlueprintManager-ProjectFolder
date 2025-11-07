@@ -244,6 +244,34 @@ export interface ElectronShortcutConfigAPI {
   validateShortcut(shortcut: string): Promise<boolean>
 }
 
+/**
+ * 通用设置 Electron IPC API
+ * @注意事项 仅在 Electron 环境可用
+ */
+import type { GeneralSettingsConfig } from '../general-settings'
+
+export interface ElectronGeneralSettingsAPI {
+  /**
+   * 加载通用设置
+   */
+  loadGeneralSettings(): Promise<GeneralSettingsConfig>
+
+  /**
+   * 保存通用设置
+   */
+  saveGeneralSettings(config: GeneralSettingsConfig): Promise<void>
+
+  /**
+   * 显示窗口
+   */
+  showWindow(): Promise<void>
+
+  /**
+   * 隐藏窗口
+   */
+  hideWindow(): Promise<void>
+}
+
 declare global {
   interface Window {
     electronAPI?: ElectronWindowAPI
@@ -253,6 +281,7 @@ declare global {
     syncAPI?: ElectronSyncAPI
     blueprintInfoAPI?: ElectronBlueprintInfoAPI
     shortcutConfigAPI?: ElectronShortcutConfigAPI
+    generalSettingsAPI?: ElectronGeneralSettingsAPI
   }
 }
 

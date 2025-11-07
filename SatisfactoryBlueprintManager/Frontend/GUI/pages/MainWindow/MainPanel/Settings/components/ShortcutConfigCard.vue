@@ -1,13 +1,12 @@
 <template>
   <div class="card shortcut-config-card">
     <div class="card-header">
-      <h3 class="card-title">快捷键配置</h3>
+      <h3 class="card-title">快捷键配置 - 唤出窗口</h3>
     </div>
 
     <div class="card-content">
       <div class="shortcut-item">
         <div class="shortcut-label">
-          <span class="label-text">唤出窗口</span>
           <span class="label-desc">按此快捷键可唤出或最小化窗口</span>
         </div>
         <div class="shortcut-input-group">

@@ -13,8 +13,10 @@ import { registerSyncHandlers } from './Ipc/SyncHandler'
 import { registerAutomationConfigHandlers } from './Ipc/AutomationConfigHandler'
 import { registerBlueprintInfoHandlers } from './Ipc/BlueprintInfoHandler'
 import { registerShortcutHandlers } from './Ipc/ShortcutHandler'
+import { registerGeneralSettingsHandlers } from './Ipc/GeneralSettingsHandler'
 import { shortcutService } from './Service/Shortcut/ShortcutService'
 import { pythonServiceManager } from './Service/PythonServiceManager'
+import { trayService } from './Service/Tray/TrayService'
 
 const platform = process.platform || os.platform()
 
@@ -46,10 +48,14 @@ async function createWindow(): Promise<void> {
   registerAutomationConfigHandlers(mainWindow)
   registerBlueprintInfoHandlers()
   registerShortcutHandlers()
+  registerGeneralSettingsHandlers(mainWindow)
 
   // 4. 初始化快捷键服务
   shortcutService.setMainWindow(mainWindow)
   await shortcutService.initialize()
+
+  // 4.5. 创建托盘
+  trayService.createTray(mainWindow)
 
   // 5. 窗口关闭清理
   mainWindow.on('closed', () => {
@@ -92,6 +98,9 @@ app.on('will-quit', async (event) => {
   
   // 注销所有快捷键
   shortcutService.unregisterAll()
+  
+  // 销毁托盘
+  trayService.destroy()
   
   try {
     await pythonServiceManager.stop()
