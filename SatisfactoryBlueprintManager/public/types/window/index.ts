@@ -148,12 +148,54 @@ export interface ElectronSyncAPI {
   openFolder(path: string): Promise<void>
 }
 
+/**
+ * 蓝图信息 Electron IPC API
+ * @注意事项 仅在 Electron 环境可用
+ */
+import type {
+  BlueprintPathInfo,
+  BlueprintInfo,
+  ParseResult,
+  ParseProgressInfo,
+} from '../blueprint-info'
+
+export interface ElectronBlueprintInfoAPI {
+  /**
+   * 批量解析蓝图配置文件
+   * @param blueprints 蓝图路径信息列表
+   * @returns 解析结果（成功和失败的 blueprintId）
+   * @throws 如果主进程服务不可用
+   */
+  parseBlueprints(blueprints: BlueprintPathInfo[]): Promise<ParseResult>
+
+  /**
+   * 订阅解析进度事件
+   * @param callback 进度回调函数
+   * @returns 取消订阅的函数
+   */
+  onProgress(callback: (progress: ParseProgressInfo) => void): () => void
+
+  /**
+   * 获取已解析的蓝图信息
+   * @param blueprintId 蓝图 ID
+   * @returns 蓝图信息，如果未解析则返回 null
+   */
+  getBlueprintInfo(blueprintId: string): Promise<BlueprintInfo | null>
+
+  /**
+   * 列出所有已解析的蓝图 ID
+   * @returns blueprintId 列表
+   */
+  listParsedBlueprints(): Promise<string[]>
+}
+
 declare global {
   interface Window {
     electronAPI?: ElectronWindowAPI
     blueprintAPI?: ElectronBlueprintAPI
     configAPI?: ElectronConfigAPI
     syncAPI?: ElectronSyncAPI
+    blueprintInfoAPI?: ElectronBlueprintInfoAPI
   }
 }
 

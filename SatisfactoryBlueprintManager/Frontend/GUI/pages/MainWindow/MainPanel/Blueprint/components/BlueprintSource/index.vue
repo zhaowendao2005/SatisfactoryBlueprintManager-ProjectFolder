@@ -2,6 +2,10 @@
   <div class="blueprint-source">
     <Topbar @add-source="handleAddSource" @refresh="handleRefresh" />
     <TreeView ref="treeViewRef" @show-details="handleShowDetails" @delete="handleDelete" />
+    <!-- 详细信息抽屉 -->
+    <DetailDrawer v-model="drawerVisible" @close="handleDrawerClose">
+      <!-- 内容由使用方自定义 -->
+    </DetailDrawer>
   </div>
 </template>
 
@@ -10,6 +14,7 @@ import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Topbar from './Topbar.vue'
 import TreeView from './TreeView.vue'
+import DetailDrawer from '../DetailDrawer.vue'
 import { useBlueprintSourceStore } from '../../stores/BlueprintSource'
 import { blueprintSourceDatasource } from '../../stores/BlueprintSource/datasource'
 import {
@@ -19,6 +24,8 @@ import {
 
 const store = useBlueprintSourceStore()
 const treeViewRef = ref<InstanceType<typeof TreeView>>()
+const drawerVisible = ref(false)
+const currentNodeId = ref<string | null>(null)
 
 const handleAddSource = async () => {
   try {
@@ -58,8 +65,13 @@ const handleRefresh = async () => {
 }
 
 const handleShowDetails = (nodeId: string) => {
-  // TODO: 实现详细信息对话框
-  console.log('Show details for:', nodeId)
+  currentNodeId.value = nodeId
+  drawerVisible.value = true
+}
+
+const handleDrawerClose = () => {
+  drawerVisible.value = false
+  currentNodeId.value = null
 }
 
 const handleDelete = async (nodeId: string) => {

@@ -11,7 +11,8 @@
       "@router/*": ["./Frontend/router/*"],
       "@boot/*": ["./Frontend/boot/*"],
       "@i18n/*": ["./Frontend/i18n/*"],
-      "@types/*": ["./public/types/*"]
+      "@types/*": ["./public/types/*"],
+      "blueprint-info": ["./public/types/blueprint-info"]
     }
   }
 }

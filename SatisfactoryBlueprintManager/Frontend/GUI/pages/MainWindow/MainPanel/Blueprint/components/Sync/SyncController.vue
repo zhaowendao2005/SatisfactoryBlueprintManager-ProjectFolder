@@ -1,7 +1,5 @@
 <template>
   <div class="sync-controller">
-    <div class="header">
-      <h3 class="title">已激活的蓝图</h3>
       <div class="sync-controls">
         <el-select v-model="syncMode" style="width: 200px; margin-right: 8px">
           <el-option label="蓝图库 → 游戏蓝图目录（全量）" value="library-to-game" />
@@ -10,7 +8,6 @@
         <el-button type="primary" :loading="isSyncing" @click="handleSync">
           同步
         </el-button>
-      </div>
     </div>
   </div>
 </template>
@@ -396,30 +393,9 @@ const handleGameToLibrarySync = async () => {
 
 <style scoped lang="scss">
 .sync-controller {
-  border-radius: 8px;
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-
-  .header {
-    height: 56px;
-    padding: 0 20px;
+  .sync-controls {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid #e0e0e0;
-
-    .title {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: #333;
-    }
-
-    .sync-controls {
-      display: flex;
-      align-items: center;
-    }
   }
 }
 </style>

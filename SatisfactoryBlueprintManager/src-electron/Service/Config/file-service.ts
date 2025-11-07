@@ -34,7 +34,7 @@ function log(message: string, ...args: unknown[]): void {
   console.log(`${getCSTTimeString()} ${message}`, ...args)
 }
 
-const CONFIG_DIR_NAME = 'Data'
+const CONFIG_DIR_NAME = 'ActiveBlueprintConfig'
 const CONFIG_FILE_EXT = '.json'
 
 /**
@@ -42,7 +42,7 @@ const CONFIG_FILE_EXT = '.json'
  */
 function getConfigDir(): string {
   const userData = app.getPath('userData')
-  return path.join(userData, CONFIG_DIR_NAME)
+  return path.join(userData, 'Data', CONFIG_DIR_NAME)
 }
 
 /**

@@ -7,6 +7,7 @@ import { exposeBlueprintAPI } from './Preload/blueprint'
 import { exposeConfigAPI } from './Preload/config'
 import { exposeSyncAPI } from './Preload/sync'
 import { exposeAutomationConfigAPI } from './Preload/automation-config'
+import { exposeBlueprintInfoAPI } from './Preload/blueprint-info'
 
 // 暴露窗口控制 API
 exposeWindowAPI()
@@ -22,6 +23,9 @@ exposeSyncAPI()
 
 // 暴露自动化配置 API
 exposeAutomationConfigAPI()
+
+// 暴露蓝图信息 API
+exposeBlueprintInfoAPI()
 
 // 其他 API 暴露...
 
