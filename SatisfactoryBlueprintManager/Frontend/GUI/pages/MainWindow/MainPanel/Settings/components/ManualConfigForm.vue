@@ -34,6 +34,37 @@
         </div>
       </el-form-item>
 
+      <!-- 蓝图标签页定位（新增） -->
+      <el-form-item
+        label="蓝图标签页定位"
+        class="form-item"
+      >
+        <div class="form-input-group">
+          <el-input
+            v-model.number="localParams.blueprintTabPosition.x"
+            type="number"
+            placeholder="X坐标"
+            @blur="handleBlur"
+          />
+          <el-input
+            v-model.number="localParams.blueprintTabPosition.y"
+            type="number"
+            placeholder="Y坐标"
+            @blur="handleBlur"
+          />
+          <el-button
+            type="primary"
+            :icon="Location"
+            @click="handleLocate('blueprint-tab')"
+          >
+            定位
+          </el-button>
+        </div>
+        <div class="form-hint">
+          点击蓝图标签页进行定位（可选，未配置则跳过此步骤）
+        </div>
+      </el-form-item>
+
       <!-- 第一位蓝图位置定位 -->
       <el-form-item
         label="第一位蓝图位置"
@@ -87,6 +118,73 @@
         </div>
       </el-form-item>
 
+      <!-- 原子化延迟参数（新增） -->
+      <el-form-item
+        label="标签页点击后延迟"
+        class="form-item"
+      >
+        <div class="form-input-group">
+          <el-input-number
+            v-model="localParams.tabClickDelay"
+            :min="10"
+            :max="5000"
+            :step="10"
+            @blur="handleBlur"
+          >
+            <template #suffix>
+              <span style="color: #999;">ms</span>
+            </template>
+          </el-input-number>
+        </div>
+        <div class="form-hint">
+          范围：10ms - 5000ms，默认 300ms
+        </div>
+      </el-form-item>
+
+      <el-form-item
+        label="输入框聚焦后延迟"
+        class="form-item"
+      >
+        <div class="form-input-group">
+          <el-input-number
+            v-model="localParams.inputFocusDelay"
+            :min="10"
+            :max="5000"
+            :step="10"
+            @blur="handleBlur"
+          >
+            <template #suffix>
+              <span style="color: #999;">ms</span>
+            </template>
+          </el-input-number>
+        </div>
+        <div class="form-hint">
+          范围：10ms - 5000ms，默认 200ms
+        </div>
+      </el-form-item>
+
+      <el-form-item
+        label="第一个蓝图点击后延迟"
+        class="form-item"
+      >
+        <div class="form-input-group">
+          <el-input-number
+            v-model="localParams.firstClickDelay"
+            :min="10"
+            :max="5000"
+            :step="10"
+            @blur="handleBlur"
+          >
+            <template #suffix>
+              <span style="color: #999;">ms</span>
+            </template>
+          </el-input-number>
+        </div>
+        <div class="form-hint">
+          范围：10ms - 5000ms，默认 500ms
+        </div>
+      </el-form-item>
+
       <!-- 显示器选择 -->
       <el-form-item
         label="显示器选择"
@@ -125,7 +223,24 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: ManualConfigParams): void
 }>()
 
-const localParams = ref<ManualConfigParams>({ ...props.modelValue })
+/**
+ * 规范化配置参数，添加缺失字段的默认值
+ */
+const normalizeParams = (params: Partial<ManualConfigParams>): ManualConfigParams => {
+  return {
+    inputFieldPosition: params.inputFieldPosition || { x: 0, y: 0 },
+    firstBlueprintPosition: params.firstBlueprintPosition || { x: 0, y: 0 },
+    charInputDelay: params.charInputDelay ?? 100,
+    displayIndex: params.displayIndex ?? null,
+    // 新增字段默认值
+    blueprintTabPosition: params.blueprintTabPosition || { x: 0, y: 0 },
+    tabClickDelay: params.tabClickDelay ?? 300,
+    inputFocusDelay: params.inputFocusDelay ?? 200,
+    firstClickDelay: params.firstClickDelay ?? 500,
+  }
+}
+
+const localParams = ref<ManualConfigParams>(normalizeParams(props.modelValue))
 
 // 标志位：是否正在同步外部数据（避免触发保存）
 const isSyncing = ref(false)
@@ -176,7 +291,7 @@ watch(
   () => props.modelValue,
   (newValue) => {
     isSyncing.value = true
-    localParams.value = { ...newValue }
+    localParams.value = normalizeParams(newValue)
     // 使用 nextTick 确保在下一个事件循环中重置标志
     setTimeout(() => {
       isSyncing.value = false
@@ -188,10 +303,23 @@ watch(
 // 深度克隆函数，去除 Vue Proxy
 const deepCloneParams = (params: ManualConfigParams): ManualConfigParams => {
   return {
-    inputFieldPosition: { ...params.inputFieldPosition },
-    firstBlueprintPosition: { ...params.firstBlueprintPosition },
-    charInputDelay: params.charInputDelay,
-    displayIndex: params.displayIndex,
+    inputFieldPosition: {
+      x: Number(params.inputFieldPosition?.x ?? 0),
+      y: Number(params.inputFieldPosition?.y ?? 0),
+    },
+    firstBlueprintPosition: {
+      x: Number(params.firstBlueprintPosition?.x ?? 0),
+      y: Number(params.firstBlueprintPosition?.y ?? 0),
+    },
+    blueprintTabPosition: {
+      x: Number(params.blueprintTabPosition?.x ?? 0),
+      y: Number(params.blueprintTabPosition?.y ?? 0),
+    },
+    charInputDelay: Number(params.charInputDelay ?? 100),
+    displayIndex: params.displayIndex === null ? null : Number(params.displayIndex),
+    tabClickDelay: Number(params.tabClickDelay ?? 300),
+    inputFocusDelay: Number(params.inputFocusDelay ?? 200),
+    firstClickDelay: Number(params.firstClickDelay ?? 500),
   }
 }
 
@@ -227,7 +355,7 @@ const handleDisplayIndexChange = () => {
 }
 
 // 定位按钮处理
-const handleLocate = async (type: 'inputField' | 'firstBlueprint') => {
+const handleLocate = async (type: 'inputField' | 'firstBlueprint' | 'blueprint-tab') => {
   const api = window.automationConfigAPI
   if (!api) {
     ElMessage.error('自动化配置 API 不可用，请确保在 Electron 环境中运行')
@@ -241,7 +369,10 @@ const handleLocate = async (type: 'inputField' | 'firstBlueprint') => {
 
   try {
     isCalibrating.value = true
-    const calibrationType: CalibrationType = type === 'inputField' ? 'inputField' : 'firstBlueprint'
+    const calibrationType: CalibrationType = 
+      type === 'inputField' ? 'inputField' :
+      type === 'firstBlueprint' ? 'firstBlueprint' :
+      'blueprint-tab'
     currentCalibrationType.value = calibrationType
     
     // 启动标定流程（结果通过事件回调接收）
@@ -273,6 +404,8 @@ const handleCalibrationResult = (result: CalibrationResult) => {
     localParams.value.inputFieldPosition = { x: result.x, y: result.y }
   } else if (currentCalibrationType.value === 'firstBlueprint') {
     localParams.value.firstBlueprintPosition = { x: result.x, y: result.y }
+  } else if (currentCalibrationType.value === 'blueprint-tab') {
+    localParams.value.blueprintTabPosition = { x: result.x, y: result.y }
   }
   
   // 重置标定类型

@@ -17,5 +17,5 @@ export interface CalibrationResult {
 /**
  * 标定类型
  */
-export type CalibrationType = 'inputField' | 'firstBlueprint'
+export type CalibrationType = 'inputField' | 'firstBlueprint' | 'blueprint-tab'
 

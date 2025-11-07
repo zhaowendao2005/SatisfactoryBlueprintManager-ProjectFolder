@@ -76,6 +76,36 @@ function generateConfigId(name: string): string {
 }
 
 /**
+ * 迁移旧配置，添加新字段默认值
+ */
+function migrateConfig(config: AutomationConfigData): AutomationConfigData {
+  if (config.mode !== 'manual') {
+    return config
+  }
+
+  const params = config.params as Record<string, unknown>
+  
+  // 如果缺少新字段，添加默认值
+  if (!('blueprintTabPosition' in params)) {
+    params.blueprintTabPosition = { x: 0, y: 0 }
+  }
+  if (!('tabClickDelay' in params)) {
+    params.tabClickDelay = 300
+  }
+  if (!('inputFocusDelay' in params)) {
+    params.inputFocusDelay = 200
+  }
+  if (!('firstClickDelay' in params)) {
+    params.firstClickDelay = 500
+  }
+
+  return {
+    ...config,
+    params: params as typeof config.params,
+  }
+}
+
+/**
  * 读取配置文件内容
  */
 async function readConfigFile(configId: string): Promise<AutomationConfigData | null> {
@@ -83,8 +113,10 @@ async function readConfigFile(configId: string): Promise<AutomationConfigData | 
   try {
     const content = await fs.readFile(filePath, 'utf-8')
     const config = JSON.parse(content) as AutomationConfigData
-    log(`读取自动化配置文件: ${configId}`, { name: config.name, mode: config.mode })
-    return config
+    // 迁移旧配置
+    const migratedConfig = migrateConfig(config)
+    log(`读取自动化配置文件: ${configId}`, { name: migratedConfig.name, mode: migratedConfig.mode })
+    return migratedConfig
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       log(`自动化配置文件不存在: ${configId}`)
@@ -181,6 +213,11 @@ function createDefaultConfig(name: string, configId: string): AutomationConfigDa
       firstBlueprintPosition: { x: 0, y: 0 },
       charInputDelay: 100,
       displayIndex: null,
+      // 新增字段默认值
+      blueprintTabPosition: { x: 0, y: 0 },
+      tabClickDelay: 300,
+      inputFocusDelay: 200,
+      firstClickDelay: 500,
     },
     createdAt: now,
     updatedAt: now,

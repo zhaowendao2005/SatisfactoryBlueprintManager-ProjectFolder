@@ -719,23 +719,49 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     },
 
     /**
-     * 使用蓝图
+     * 使用蓝图（执行自动化工作流）
+     * @注意事项 需要先配置自动化参数，否则提示用户
      */
-    useBlueprint(nodeId: string): void {
+    async useBlueprint(nodeId: string): Promise<void> {
       const node = this.findNodeById(nodeId)
       if (!node || node.type !== 'blueprint') {
         console.warn('Invalid blueprint node:', nodeId)
         return
       }
 
-      const event: BlueprintUsageEvent = {
-        blueprintId: node.blueprintId || node.id,
-        blueprintPath: node.path || '',
-        timestamp: Date.now(),
+      // 检查是否有自动化配置
+      if (!window.automationConfigAPI) {
+        const { ElMessage } = await import('element-plus')
+        ElMessage.warning('自动化配置 API 不可用，请确保在 Electron 环境中运行')
+        return
       }
 
-      // 当前阶段仅 console.log，未来触发事件
-      console.log('Use blueprint:', event)
+      // 获取当前配置
+      const configs = await window.automationConfigAPI.listConfigs()
+      if (configs.length === 0) {
+        const { ElMessage } = await import('element-plus')
+        ElMessage.warning('请先在设置页配置自动化参数')
+        return
+      }
+
+      // 使用第一个配置（或当前配置）
+      const configId = configs[0].id
+      const blueprintName = node.name
+
+      try {
+        // 执行自动化测试
+        const result = await window.automationConfigAPI.executeTest(blueprintName, configId)
+        
+        const { ElMessage } = await import('element-plus')
+        if (result.success) {
+          ElMessage.success(`蓝图 "${blueprintName}" 使用成功`)
+        } else {
+          ElMessage.error(`蓝图使用失败: ${result.message}`)
+        }
+      } catch (error) {
+        const { ElMessage } = await import('element-plus')
+        ElMessage.error(`执行失败: ${error instanceof Error ? error.message : String(error)}`)
+      }
     },
 
     /**

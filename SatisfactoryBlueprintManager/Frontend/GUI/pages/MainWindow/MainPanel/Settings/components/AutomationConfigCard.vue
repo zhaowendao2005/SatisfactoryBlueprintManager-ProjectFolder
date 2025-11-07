@@ -59,6 +59,10 @@ const formParams = computed<ManualConfigParams>(() => {
       firstBlueprintPosition: { x: 0, y: 0 },
       charInputDelay: 100,
       displayIndex: null,
+      blueprintTabPosition: { x: 0, y: 0 },
+      tabClickDelay: 300,
+      inputFocusDelay: 200,
+      firstClickDelay: 500,
     }
   }
   // 深度克隆去除 Pinia 的 Proxy 包装
@@ -68,6 +72,10 @@ const formParams = computed<ManualConfigParams>(() => {
     firstBlueprintPosition: { ...params.firstBlueprintPosition },
     charInputDelay: params.charInputDelay,
     displayIndex: params.displayIndex,
+    blueprintTabPosition: { ...(params.blueprintTabPosition || { x: 0, y: 0 }) },
+    tabClickDelay: params.tabClickDelay ?? 300,
+    inputFocusDelay: params.inputFocusDelay ?? 200,
+    firstClickDelay: params.firstClickDelay ?? 500,
   }
 })
 

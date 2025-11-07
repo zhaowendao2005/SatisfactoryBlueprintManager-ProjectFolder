@@ -11,6 +11,8 @@ import { registerConfigHandlers } from './Ipc/ConfigHandler'
 import { registerSyncHandlers } from './Ipc/SyncHandler'
 import { registerAutomationConfigHandlers } from './Ipc/AutomationConfigHandler'
 import { registerBlueprintInfoHandlers } from './Ipc/BlueprintInfoHandler'
+import { registerShortcutHandlers } from './Ipc/ShortcutHandler'
+import { shortcutService } from './Service/Shortcut/ShortcutService'
 import { pythonServiceManager } from './Service/PythonServiceManager'
 
 const platform = process.platform || os.platform()
@@ -41,10 +43,16 @@ async function createWindow(): Promise<void> {
   registerSyncHandlers()
   registerAutomationConfigHandlers(mainWindow)
   registerBlueprintInfoHandlers()
+  registerShortcutHandlers()
 
-  // 4. 窗口关闭清理
+  // 4. 初始化快捷键服务
+  shortcutService.setMainWindow(mainWindow)
+  await shortcutService.initialize()
+
+  // 5. 窗口关闭清理
   mainWindow.on('closed', () => {
     mainWindow = undefined
+    shortcutService.setMainWindow(null)
   })
 }
 
@@ -78,7 +86,10 @@ app.on('will-quit', async (event) => {
   // 阻止默认退出
   event.preventDefault()
   
-  console.log('[Main] 应用退出中，清理 Python 服务...')
+  console.log('[Main] 应用退出中，清理资源...')
+  
+  // 注销所有快捷键
+  shortcutService.unregisterAll()
   
   try {
     await pythonServiceManager.stop()

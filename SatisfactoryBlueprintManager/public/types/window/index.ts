@@ -189,6 +189,29 @@ export interface ElectronBlueprintInfoAPI {
   listParsedBlueprints(): Promise<string[]>
 }
 
+/**
+ * 快捷键配置 Electron IPC API
+ * @注意事项 仅在 Electron 环境可用
+ */
+import type { ShortcutConfig } from '../shortcut-config'
+
+export interface ElectronShortcutConfigAPI {
+  /**
+   * 加载快捷键配置
+   */
+  loadShortcutConfig(): Promise<ShortcutConfig>
+
+  /**
+   * 保存快捷键配置（自动重新注册）
+   */
+  saveShortcutConfig(config: ShortcutConfig): Promise<void>
+
+  /**
+   * 验证快捷键格式是否有效
+   */
+  validateShortcut(shortcut: string): Promise<boolean>
+}
+
 declare global {
   interface Window {
     electronAPI?: ElectronWindowAPI
@@ -196,6 +219,7 @@ declare global {
     configAPI?: ElectronConfigAPI
     syncAPI?: ElectronSyncAPI
     blueprintInfoAPI?: ElectronBlueprintInfoAPI
+    shortcutConfigAPI?: ElectronShortcutConfigAPI
   }
 }
 

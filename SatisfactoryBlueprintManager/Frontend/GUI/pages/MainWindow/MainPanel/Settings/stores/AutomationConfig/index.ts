@@ -7,6 +7,7 @@ import { Notify } from 'quasar'
 import type { AutomationConfigState } from './types'
 import type { AutomationConfigMeta, AutomationConfigData, ManualConfigParams } from '@types/automation-config'
 import type { CalibrationResult, CalibrationType } from '@types/automation-config/calibration'
+import { LocalStorageService } from '@gui/utils/localStorageService'
 
 declare global {
   interface Window {
@@ -70,6 +71,7 @@ export const useAutomationConfigStore = defineStore('settings.automationConfig',
 
     /**
      * 加载完整配置数据，失败时 currentConfig 设为 null
+     * @注意事项 加载成功后自动保存到localStorage
      */
     async loadConfig(id: string): Promise<void> {
       try {
@@ -78,6 +80,8 @@ export const useAutomationConfigStore = defineStore('settings.automationConfig',
         if (config) {
           this.currentConfig = config
           this.currentConfigId = id
+          // 保存到localStorage
+          LocalStorageService.saveLastConfigId(id)
         } else {
           this.currentConfig = null
           this.currentConfigId = null
@@ -147,26 +151,43 @@ export const useAutomationConfigStore = defineStore('settings.automationConfig',
         (params.firstBlueprintPosition.x !== currentParams.firstBlueprintPosition.x || 
          params.firstBlueprintPosition.y !== currentParams.firstBlueprintPosition.y)
       
+      const blueprintTabChanged = params.blueprintTabPosition &&
+        (params.blueprintTabPosition.x !== currentParams.blueprintTabPosition.x ||
+         params.blueprintTabPosition.y !== currentParams.blueprintTabPosition.y)
+      
       const charInputDelayChanged = params.charInputDelay !== undefined && 
         params.charInputDelay !== currentParams.charInputDelay
       
       const displayIndexChanged = 'displayIndex' in params && 
         params.displayIndex !== currentParams.displayIndex
 
-      if (!inputFieldChanged && !firstBlueprintChanged && !charInputDelayChanged && !displayIndexChanged) {
+      const tabClickDelayChanged = params.tabClickDelay !== undefined &&
+        params.tabClickDelay !== (currentParams.tabClickDelay ?? 300)
+
+      const inputFocusDelayChanged = params.inputFocusDelay !== undefined &&
+        params.inputFocusDelay !== (currentParams.inputFocusDelay ?? 200)
+
+      const firstClickDelayChanged = params.firstClickDelay !== undefined &&
+        params.firstClickDelay !== (currentParams.firstClickDelay ?? 500)
+
+      if (!inputFieldChanged && !firstBlueprintChanged && !blueprintTabChanged && 
+          !charInputDelayChanged && !displayIndexChanged &&
+          !tabClickDelayChanged && !inputFocusDelayChanged && 
+          !firstClickDelayChanged) {
         // console.log('[Store] No change detected, skipping update')
         return
       }
 
       try {
-        const updatedConfig: AutomationConfigData = {
+        // 使用 JSON 序列化去除 Vue Proxy，确保 IPC 传递时不会出错
+        const updatedConfig: AutomationConfigData = JSON.parse(JSON.stringify({
           ...this.currentConfig,
           params: {
             ...this.currentConfig.params,
             ...params,
           } as ManualConfigParams,
-          updatedAt: Date.now(), // 更新时间戳
-        }
+          updatedAt: Date.now(),
+        }))
         await getAutomationConfigAPI().saveConfig(updatedConfig)
         this.currentConfig = updatedConfig
         // 更新列表中的元信息
@@ -192,6 +213,7 @@ export const useAutomationConfigStore = defineStore('settings.automationConfig',
 
     /**
      * 删除配置，如果删除的是当前配置则清空 currentConfig
+     * @注意事项 如果删除的是当前配置，清除localStorage
      */
     async deleteConfig(id: string): Promise<void> {
       try {
@@ -203,6 +225,8 @@ export const useAutomationConfigStore = defineStore('settings.automationConfig',
         if (this.currentConfigId === id) {
           this.currentConfig = null
           this.currentConfigId = null
+          // 清除localStorage
+          LocalStorageService.clearLastConfigId()
         }
       } catch (error) {
         console.error(`Failed to delete automation config ${id}:`, error)
@@ -243,6 +267,37 @@ export const useAutomationConfigStore = defineStore('settings.automationConfig',
         throw error
       } finally {
         this.isLoading = false
+      }
+    },
+
+    /**
+     * 初始化：从localStorage恢复上次使用的配置
+     * @注意事项 仅在应用启动时调用，静默失败（不显示错误提示）
+     */
+    async initializeFromLocalStorage(): Promise<void> {
+      try {
+        const lastConfigId = LocalStorageService.getLastConfigId()
+        if (lastConfigId) {
+          // 先加载配置列表
+          await this.loadConfigList()
+          // 检查配置是否存在
+          const configExists = this.configList.some(c => c.id === lastConfigId)
+          if (configExists) {
+            // 静默加载，不显示错误提示
+            try {
+              await this.loadConfig(lastConfigId)
+            } catch {
+              // 配置加载失败，清除localStorage
+              LocalStorageService.clearLastConfigId()
+            }
+          } else {
+            // 配置不存在，清除localStorage
+            LocalStorageService.clearLastConfigId()
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize from localStorage:', error)
+        // 静默失败，不影响应用启动
       }
     },
   },

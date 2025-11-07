@@ -12,6 +12,7 @@
         >
           <el-anchor-link href="#config-management" title="配置管理" />
           <el-anchor-link href="#automation-config" title="自动化配置" />
+          <el-anchor-link href="#shortcut-config" title="快捷键配置" />
           <el-anchor-link href="#automation-debug" title="自动化测试" />
         </el-anchor>
       </div>
@@ -34,6 +35,14 @@
           <AutomationConfigCard />
         </section>
 
+        <!-- 快捷键配置卡片 -->
+        <section
+          id="shortcut-config"
+          class="content-section"
+        >
+          <ShortcutConfigCard />
+        </section>
+
         <!-- 自动化测试卡片 -->
         <section
           id="automation-debug"
@@ -50,6 +59,7 @@
 import { ref, onMounted } from 'vue'
 import ConfigManagerCard from './components/ConfigManagerCard.vue'
 import AutomationConfigCard from './components/AutomationConfigCard.vue'
+import ShortcutConfigCard from './components/ShortcutConfigCard.vue'
 import AutomationDebugCard from './components/AutomationDebugCard.vue'
 import { useAutomationConfigStore } from './stores/AutomationConfig'
 
@@ -62,7 +72,8 @@ const handleClick = (e: MouseEvent) => {
 
 onMounted(async () => {
   try {
-    await automationConfigStore.loadConfigList()
+    // 从localStorage恢复上次使用的配置（内部会先加载配置列表）
+    await automationConfigStore.initializeFromLocalStorage()
   } catch (error) {
     console.error('Failed to initialize automation config:', error)
   }

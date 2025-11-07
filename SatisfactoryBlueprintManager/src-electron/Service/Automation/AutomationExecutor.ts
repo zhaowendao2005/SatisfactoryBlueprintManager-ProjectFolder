@@ -106,6 +106,7 @@ export class AutomationExecutor {
 
   /**
    * 内部执行逻辑
+   * @注意事项 扩展工作流：蓝图标签页定位 → 输入框操作 → 点击第一个蓝图
    */
   private async executeInternal(
     testText: string,
@@ -117,7 +118,32 @@ export class AutomationExecutor {
       throw new Error('任务已取消')
     }
 
-    // 1. 点击输入栏
+    // 阶段1：点击蓝图标签页（如果已配置）
+    if (config.blueprintTabPosition.x !== 0 || config.blueprintTabPosition.y !== 0) {
+      await pythonServiceManager.execute({
+        action: 'mouseClick',
+        params: {
+          x: config.blueprintTabPosition.x,
+          y: config.blueprintTabPosition.y,
+          button: 'left'
+        }
+      })
+
+      // 检查是否已取消
+      if (signal.aborted) {
+        throw new Error('任务已取消')
+      }
+
+      // 延迟：标签页点击后等待
+      await sleep(config.tabClickDelay || 300)
+    }
+
+    // 检查是否已取消
+    if (signal.aborted) {
+      throw new Error('任务已取消')
+    }
+
+    // 阶段2：点击输入栏
     await pythonServiceManager.execute({
       action: 'mouseClick',
       params: {
@@ -132,7 +158,15 @@ export class AutomationExecutor {
       throw new Error('任务已取消')
     }
 
-    // 2. 逐字符输入
+    // 延迟：输入框聚焦后等待
+    await sleep(config.inputFocusDelay || 200)
+
+    // 检查是否已取消
+    if (signal.aborted) {
+      throw new Error('任务已取消')
+    }
+
+    // 阶段3：逐字符输入
     await pythonServiceManager.execute({
       action: 'typeText',
       params: {
@@ -146,7 +180,15 @@ export class AutomationExecutor {
       throw new Error('任务已取消')
     }
 
-    // 3. 点击第一蓝图位置
+    // 延迟：等待搜索结果（固定100ms）
+    await sleep(100)
+
+    // 检查是否已取消
+    if (signal.aborted) {
+      throw new Error('任务已取消')
+    }
+
+    // 阶段4：点击第一蓝图位置
     await pythonServiceManager.execute({
       action: 'mouseClick',
       params: {
@@ -155,6 +197,14 @@ export class AutomationExecutor {
         button: 'left'
       }
     })
+
+    // 检查是否已取消
+    if (signal.aborted) {
+      throw new Error('任务已取消')
+    }
+
+    // 延迟：第一个蓝图点击后等待
+    await sleep(config.firstClickDelay || 500)
   }
 
   /**

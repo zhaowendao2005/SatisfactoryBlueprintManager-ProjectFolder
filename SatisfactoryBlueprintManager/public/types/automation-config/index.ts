@@ -23,6 +23,14 @@ export interface ManualConfigParams {
   firstBlueprintPosition: { x: number; y: number } // 第一位蓝图屏幕坐标
   charInputDelay: number                          // 字符输入间隔（ms），范围 10-1000
   displayIndex: number | null                     // 显示器序号（未来记录操作的显示器序号），默认 null
+  
+  // 新增：蓝图标签页定位
+  blueprintTabPosition: { x: number; y: number }  // 蓝图标签页屏幕坐标，默认 { x: 0, y: 0 }
+  
+  // 新增：原子化延迟参数（ms）
+  tabClickDelay: number                           // 标签页点击后延迟，默认 300
+  inputFocusDelay: number                         // 输入框聚焦后延迟，默认 200
+  firstClickDelay: number                         // 第一个蓝图点击后延迟，默认 500
 }
 
 /**
