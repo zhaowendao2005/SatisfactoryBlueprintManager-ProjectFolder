@@ -736,16 +736,19 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
         return
       }
 
-      // 获取当前配置
-      const configs = await window.automationConfigAPI.listConfigs()
-      if (configs.length === 0) {
+      // 导入 AutomationConfigStore 获取当前选中的配置
+      const { useAutomationConfigStore } = await import('@gui/pages/MainWindow/MainPanel/Settings/stores/AutomationConfig')
+      const automationStore = useAutomationConfigStore()
+      
+      // 使用当前选中的配置ID
+      const configId = automationStore.currentConfigId
+      
+      if (!configId) {
         const { ElMessage } = await import('element-plus')
-        ElMessage.warning('请先在设置页配置自动化参数')
+        ElMessage.warning('请先在设置页选择并配置自动化参数')
         return
       }
 
-      // 使用第一个配置（或当前配置）
-      const configId = configs[0].id
       const blueprintName = node.name
 
       try {
