@@ -1,59 +1,68 @@
 <template>
-  <div class="tag-view">
-    <!-- 标签筛选器 -->
-    <TagFilter
-      :path-tag-tree="pathTagTree"
-      :user-tags="userTags"
-      :active-tags="activeTags"
-      :logic-mode="logicMode"
-      @update:active-tags="handleActiveTagsChange"
-      @update:logic-mode="handleLogicModeChange"
-      @delete-tag="handleDeleteTag"
-    />
-
-    <!-- 批量操作工具栏 -->
-    <BatchOperationBar
-      :batch-mode="batchMode"
-      :selected-blueprints="selectedBlueprints"
-      :all-tags="tags"
-      :blueprint-count="filteredBlueprints.length"
-      @toggle-batch-mode="handleToggleBatchMode"
-      @batch-add-tag="handleBatchAddTag"
-      @batch-remove-tag="handleBatchRemoveTag"
-      @create-tag="handleCreateTag"
-    />
-
-    <!-- 栏数控制器 -->
-    <ColumnControl v-model:columns="columnCount" />
-
-    <!-- 🔑 固定高度的滚动容器 -->
-    <div class="blueprint-grid-container">
-    <!-- 蓝图卡片网格 -->
-    <div
-      v-if="filteredBlueprints.length > 0"
-      class="blueprint-grid"
-        :class="`columns-${columnCount}`"
+  <div class="tag-view-horizontal">
+    <CustomSplitter
+      v-model="splitterModel"
+      :min="200"
+      :max="600"
+      class="split-container"
     >
-      <BlueprintCard
-        v-for="blueprint in filteredBlueprints"
-        :key="blueprint.id"
-        :blueprint="blueprint"
-        :batch-mode="batchMode"
-        :is-selected="selectedBlueprints.has(blueprint.id)"
-        :all-tags="tags"
-        @toggle-select="handleToggleSelect"
-        @use-blueprint="handleUseBlueprint"
-      />
-    </div>
+      <template #left>
+        <div class="left-panel">
+          <TagFilter
+            :path-tag-tree="pathTagTree"
+            :user-tags="userTags"
+            :active-tags="activeTags"
+            :logic-mode="logicMode"
+            @update:active-tags="handleActiveTagsChange"
+            @update:logic-mode="handleLogicModeChange"
+            @delete-tag="handleDeleteTag"
+          />
+        </div>
+      </template>
 
-    <!-- 空状态 -->
-    <div
-      v-else
-      class="empty-state"
-    >
-      <el-empty description="没有找到符合条件的蓝图" />
-      </div>
-    </div>
+      <template #right>
+        <div class="right-panel">
+          <!-- 批量操作工具栏 -->
+          <BatchOperationBar
+            :batch-mode="batchMode"
+            :selected-blueprints="selectedBlueprints"
+            :all-tags="tags"
+            :blueprint-count="filteredBlueprints.length"
+            @toggle-batch-mode="handleToggleBatchMode"
+            @batch-add-tag="handleBatchAddTag"
+            @batch-remove-tag="handleBatchRemoveTag"
+            @create-tag="handleCreateTag"
+          />
+
+          <!-- 栏数控制器 -->
+          <ColumnControl v-model:columns="columnCount" />
+
+          <!-- 蓝图卡片网格容器 -->
+          <div class="blueprint-grid-container">
+            <div
+              v-if="filteredBlueprints.length > 0"
+              class="blueprint-grid"
+              :class="`columns-${columnCount}`"
+            >
+              <BlueprintCard
+                v-for="blueprint in filteredBlueprints"
+                :key="blueprint.id"
+                :blueprint="blueprint"
+                :batch-mode="batchMode"
+                :is-selected="selectedBlueprints.has(blueprint.id)"
+                :all-tags="tags"
+                @toggle-select="handleToggleSelect"
+                @use-blueprint="handleUseBlueprint"
+              />
+            </div>
+
+            <div v-else class="empty-state">
+              <el-empty description="没有找到符合条件的蓝图" />
+            </div>
+          </div>
+        </div>
+      </template>
+    </CustomSplitter>
   </div>
 </template>
 
@@ -64,6 +73,7 @@ import type { TagDefinition, ActiveBlueprintNodeWithTags } from '../../types'
 import { flattenBlueprintTree, filterBlueprintsByTags, buildPathTagTree } from '../../utils/tagHelpers'
 import { useActiveBlueprintStore } from '../../stores/ActiveBlueprint'
 import { useGlobalTagsStore } from '../../stores/GlobalTags'
+import CustomSplitter from './CustomSplitter.vue'
 import TagFilter from './TagView/TagFilter.vue'
 import BatchOperationBar from './TagView/BatchOperationBar.vue'
 import ColumnControl from './TagView/ColumnControl.vue'
@@ -71,6 +81,9 @@ import BlueprintCard from './TagView/BlueprintCard.vue'
 
 const activeBlueprintStore = useActiveBlueprintStore()
 const globalTagsStore = useGlobalTagsStore()
+
+// Splitter 模型（左侧面板宽度，单位：px）
+const splitterModel = ref(300) // 默认左侧 300px
 
 // 状态管理
 const activeTags = ref<Set<string>>(new Set())
@@ -125,7 +138,7 @@ const tags = computed<TagDefinition[]>(() => {
     }
     return result
   }
-  
+
   const pathTagsList = flattenTree(pathTagTree.value)
   return [...userTags.value, ...pathTagsList]
 })
@@ -266,7 +279,7 @@ const handleDeleteTag = async (tagId: string): Promise<void> => {
     // ✅ 标签操作仍使用 activeBlueprintStore（内部会委托给全局Store）
     await activeBlueprintStore.deleteTag(tagId)
     ElMessage.success(`标签"${tag.name}"已删除`)
-    
+
     // 如果该标签在筛选中，移除它
     if (activeTags.value.has(tagId)) {
       activeTags.value.delete(tagId)
@@ -282,96 +295,125 @@ const handleDeleteTag = async (tagId: string): Promise<void> => {
 </script>
 
 <style scoped lang="scss">
-.tag-view {
+.tag-view-horizontal {
   flex: 1;
-  overflow-y: auto; // ✅ 外层可以滚动（双重滚动条）
-  overflow-x: hidden; // 禁止横向溢出
-  padding: 16px;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0; // 重要：允许 flex 子元素收缩
-  
-  // 外层滚动条样式
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
+  min-height: 0;
+  overflow: hidden;
+
+  .split-container {
+    width: 100%;
+    height: 100%;
   }
 
-  // 🔑 内层滚动容器（固定高度，双重滚动条）
-  .blueprint-grid-container {
-    height: 500px; // ✅ 固定高度，让外层可以滚动到这里
-    min-height: 500px; // 确保最小高度
-    flex-shrink: 0; // 禁止在 flex 布局中被压缩
-    overflow-y: auto; // 内部垂直滚动
-    overflow-x: hidden; // 禁止横向溢出
-    padding-right: 4px; // 给滚动条留空间
-    
-    // 内层滚动条样式（稍微细一点，区分内外）
+  // 左侧面板：标签筛选器（CustomSplitter 内部已经处理了高度，这里只需要处理内容滚动）
+  :deep(.left-panel) {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+    background: #fafafa;
+
     &::-webkit-scrollbar {
-      width: 6px;
+      width: 8px;
     }
     &::-webkit-scrollbar-thumb {
-      background-color: rgba(0, 0, 0, 0.25);
-      border-radius: 3px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
     }
     &::-webkit-scrollbar-track {
       background-color: rgba(0, 0, 0, 0.05);
-      border-radius: 3px;
+      border-radius: 4px;
     }
   }
 
-  .blueprint-grid {
-    display: grid;
-    gap: 20px;
-    padding-bottom: 20px;
-    width: 100%; // 确保宽度填满
-    min-height: 100%; // 确保最小高度填满容器
-    
-    // ✅ 动态列数控制
-    &.columns-2 {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    &.columns-3 {
-      grid-template-columns: repeat(3, 1fr);
-    }
-    &.columns-4 {
-      grid-template-columns: repeat(4, 1fr);
-    }
-    
-    // 响应式降级（避免窄屏溢出）
-    @media (max-width: 640px) {
-      &.columns-2,
-      &.columns-3,
-      &.columns-4 {
-        grid-template-columns: 1fr !important;
-      }
-    }
-    @media (min-width: 641px) and (max-width: 920px) {
-      &.columns-3,
-      &.columns-4 {
-        grid-template-columns: repeat(2, 1fr) !important;
-      }
-    }
-    @media (min-width: 921px) and (max-width: 1240px) {
-      &.columns-4 {
-        grid-template-columns: repeat(3, 1fr) !important;
-      }
-    }
-  }
-
-  .empty-state {
+  // 右侧面板：其他内容（CustomSplitter 内部已经处理了高度，这里只需要处理内容滚动）
+  :deep(.right-panel) {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 300px;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+    }
+    &::-webkit-scrollbar-track {
+      background-color: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+    }
+
+    .blueprint-grid-container {
+      height: 500px;
+      min-height: 500px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 4px;
+
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.25);
+        border-radius: 3px;
+      }
+      &::-webkit-scrollbar-track {
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 3px;
+      }
+    }
+
+    .blueprint-grid {
+      display: grid;
+      gap: 20px;
+      padding-bottom: 20px;
+      width: 100%;
+      min-height: 100%;
+
+      &.columns-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      &.columns-3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      &.columns-4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      @media (max-width: 640px) {
+        &.columns-2,
+        &.columns-3,
+        &.columns-4 {
+          grid-template-columns: 1fr !important;
+        }
+      }
+      @media (min-width: 641px) and (max-width: 920px) {
+        &.columns-3,
+        &.columns-4 {
+          grid-template-columns: repeat(2, 1fr) !important;
+        }
+      }
+      @media (min-width: 921px) and (max-width: 1240px) {
+        &.columns-4 {
+          grid-template-columns: repeat(3, 1fr) !important;
+        }
+      }
+    }
+
+    .empty-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+    }
   }
 }
 </style>

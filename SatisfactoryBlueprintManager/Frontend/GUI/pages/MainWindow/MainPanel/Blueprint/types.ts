@@ -62,7 +62,7 @@ export interface ActiveBlueprintTree {
 /**
  * 视图类型
  */
-export type ViewType = 'tree' | 'icon'
+export type ViewType = 'tree' | 'icon' | 'icon-horizontal'
 
 /**
  * 标签定义接口

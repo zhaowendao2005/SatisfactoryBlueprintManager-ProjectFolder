@@ -183,19 +183,30 @@ export function filterBlueprintsByTags(
   }
 
   return blueprints.filter((blueprint) => {
-    // 合并路径标签和用户标签
-    const pathTagId = blueprint.directoryPath ? `path:${blueprint.directoryPath}` : null
+    const blueprintPath = blueprint.directoryPath || ''
     const userTags = blueprint.tags || []
-    const allTags = pathTagId ? [pathTagId, ...userTags] : userTags
 
     const tagArray = Array.from(activeTags)
 
+    // 辅助函数：检查标签是否匹配
+    const matchesTag = (tagId: string): boolean => {
+      // 路径标签：使用前缀匹配（支持层级筛选）
+      if (tagId.startsWith('path:')) {
+        const tagPath = tagId.substring(5) // 去掉 "path:" 前缀
+        // 检查蓝图路径是否以该路径开头
+        return blueprintPath.startsWith(tagPath)
+      }
+      
+      // 用户标签：精确匹配
+      return userTags.includes(tagId)
+    }
+
     if (logicMode === 'and') {
-      // 与逻辑：蓝图必须包含所有选中的标签（路径+用户）
-      return tagArray.every((tagId) => allTags.includes(tagId))
+      // 与逻辑：蓝图必须匹配所有选中的标签
+      return tagArray.every(matchesTag)
     } else {
-      // 或逻辑：蓝图只需包含至少一个选中的标签
-      return tagArray.some((tagId) => allTags.includes(tagId))
+      // 或逻辑：蓝图只需匹配至少一个选中的标签
+      return tagArray.some(matchesTag)
     }
   })
 }

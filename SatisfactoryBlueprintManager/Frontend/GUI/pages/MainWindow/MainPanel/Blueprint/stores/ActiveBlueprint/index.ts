@@ -1543,8 +1543,8 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
           const node = this.findNodeById(nodeId)
           if (node?.type === 'blueprint' && node.path) {
             blueprintPaths.push(node.path)
-          }
-        }
+              }
+            }
 
         if (blueprintPaths.length === 0) {
           throw new Error('没有找到有效的蓝图路径')
@@ -1581,12 +1581,12 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
           const node = this.findNodeById(nodeId)
           if (node?.type === 'blueprint' && node.path) {
             blueprintPaths.push(node.path)
-          }
+                }
         }
 
         if (blueprintPaths.length === 0) {
           throw new Error('没有找到有效的蓝图路径')
-        }
+            }
 
         // 委托给全局Store
         await globalTagsStore.batchRemoveTags(blueprintPaths, tagId)

@@ -222,7 +222,9 @@ const handleCreateGroup = async (nodeId: string) => {
 .active-tree-view {
   flex: 1;
   overflow-y: scroll;
+  overflow-x: hidden; // 禁止横向溢出
   padding: 12px 0;
+  min-height: 0; // 重要：允许 flex 子元素收缩
 
   // 自定义滚动条样式（调低滚动条高度）
   &::-webkit-scrollbar {

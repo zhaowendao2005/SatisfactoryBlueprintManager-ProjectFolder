@@ -18,7 +18,8 @@
       v-if="currentView === 'tree'"
       @show-details="handleShowDetails"
     />
-    <TagView v-else />
+    <TagView v-else-if="currentView === 'icon'" />
+    <TagViewHorizontal v-else-if="currentView === 'icon-horizontal'" />
     <!-- 详细信息抽屉 -->
     <DetailDrawer
       v-model="drawerVisible"
@@ -36,6 +37,7 @@ import { computed, ref } from 'vue'
 import ViewSwitcher from './ViewSwitcher.vue'
 import TreeView from './TreeView.vue'
 import TagView from './TagView.vue'
+import TagViewHorizontal from './TagViewHorizontal.vue'
 import DetailDrawer from '../DetailDrawer.vue'
 import SyncController from '../Sync/SyncController.vue'
 import BlueprintInfoController from '../BlueprintInfo/BlueprintInfoController.vue'
