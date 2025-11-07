@@ -16,6 +16,12 @@ export interface ConfigFileData {
   version: string
   createdAt: number
   updatedAt: number
+  pathTagLevels?: number        // 路径追踪级数（默认 3，范围 1-6）
+  tags?: Array<{          // 配置中的标签列表
+    id: string           // 标签 ID
+    name: string         // 标签名称
+    color: string        // 标签颜色
+  }>
   tree: Array<{
     id: string
     type: 'group' | 'blueprint'
@@ -23,6 +29,8 @@ export interface ConfigFileData {
     blueprintId?: string
     path?: string
     sourcePath?: string
+    directoryPath?: string      // 目录路径（不含文件名）
+    tags?: string[]      // 蓝图的标签 ID 列表（只包含用户标签）
     children?: Array<{
       id: string
       type: 'group' | 'blueprint'
@@ -30,6 +38,8 @@ export interface ConfigFileData {
       blueprintId?: string
       path?: string
       sourcePath?: string
+      directoryPath?: string    // 目录路径（不含文件名）
+      tags?: string[]    // 蓝图的标签 ID 列表（只包含用户标签）
       children?: unknown[]
     }>
   }>

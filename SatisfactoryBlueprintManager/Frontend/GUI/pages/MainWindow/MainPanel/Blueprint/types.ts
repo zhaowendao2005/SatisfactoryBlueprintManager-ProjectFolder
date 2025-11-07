@@ -36,14 +36,17 @@ export type ActiveNodeType = 'group' | 'blueprint'
  * - 分组信息独立于文件系统，完全由用户创建
  * - blueprintId 用于取消激活时查找节点（无论节点在哪个分组下）
  * - sourcePath 用于去重，防止重复激活同一蓝图
+ * - directoryPath 为目录路径（不含文件名），根据 pathTagLevels 配置提取
  */
 export interface ActiveBlueprintNode {
   id: string                    // 唯一标识
   name: string                  // 显示名称
   type: ActiveNodeType          // 节点类型：'group' | 'blueprint'
   blueprintId?: string          // 关联的原始蓝图 id（仅蓝图节点，用于取消激活时查找）
-  path?: string                 // 蓝图路径（仅蓝图节点）
+  path?: string                 // 蓝图完整路径（含文件名，仅蓝图节点）
   sourcePath?: string           // 原始蓝图路径（用于去重，仅蓝图节点）
+  directoryPath?: string        // 目录路径（不含文件名，根据 pathTagLevels 提取，仅蓝图节点）
+  tags?: string[]               // 用户标签 ID 列表（仅蓝图节点，不含路径标签）
   children?: ActiveBlueprintNode[] // 子节点（仅分组节点）
 }
 
@@ -60,6 +63,26 @@ export interface ActiveBlueprintTree {
  * 视图类型
  */
 export type ViewType = 'tree' | 'icon'
+
+/**
+ * 标签定义接口
+ * @注意事项 预定义标签列表，未来可扩展为用户自定义
+ */
+export interface TagDefinition {
+  id: string          // 标签唯一ID（如 'building', 'mechanical'）
+  name: string        // 标签显示名称
+  color: string       // 标签颜色（支持 Element Plus Tag 的 type 或自定义颜色）
+}
+
+/**
+ * 扩展的激活蓝图节点（添加 tags 字段）
+ * @注意事项 
+ * - tags 为标签 ID 数组，不包含路径标签（路径标签自动生成）
+ * - 持久化时会序列化到配置文件
+ */
+export interface ActiveBlueprintNodeWithTags extends ActiveBlueprintNode {
+  tags?: string[]     // 用户添加的标签 ID 列表
+}
 
 /**
  * 蓝图源配置

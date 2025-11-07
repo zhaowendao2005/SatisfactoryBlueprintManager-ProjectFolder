@@ -14,9 +14,7 @@
       v-if="currentView === 'tree'"
       @show-details="handleShowDetails"
     />
-    <div v-else class="icon-view-placeholder">
-      <p>图标视图暂未实现</p>
-    </div>
+    <TagView v-else />
   </div>
 </template>
 
@@ -24,6 +22,7 @@
 import { computed } from 'vue'
 import ViewSwitcher from './ViewSwitcher.vue'
 import TreeView from './TreeView.vue'
+import TagView from './TagView.vue'
 import SyncController from '../Sync/SyncController.vue'
 import { useActiveBlueprintStore } from '../../stores/ActiveBlueprint'
 
@@ -39,7 +38,7 @@ const handleShowDetails = (nodeId: string) => {
 
 <style scoped lang="scss">
 .active-blueprint {
-  height: 400px; // 固定高度
+  height: 800px; // 固定高度
   border-radius: 8px;
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);

@@ -82,34 +82,18 @@ export function buildEnhancedGroupStructure(
   }
 
   /**
-   * 构建或获取目录节点（在 groups 中）
+   * 构建或获取目录节点（只在当前层级查找，避免循环引用）
    */
   const getOrCreateDirectoryNode = (
     dirPath: string,
-    dirName: string
+    dirName: string,
+    currentLevelNodes: ActiveBlueprintNode[]
   ): ActiveBlueprintNode => {
-    // 查找是否已存在
-    const findInGroups = (
-      nodes: ActiveBlueprintNode[],
-      targetPath: string
-    ): ActiveBlueprintNode | null => {
-      for (const node of nodes) {
-        if (node.type === 'group' && node.name === dirName) {
-          // 简单匹配：如果名称相同，认为是同一个目录
-          // 注意：这里假设同一层级的目录名称唯一
-          return node
-        }
-        if (node.children) {
-          const found = findInGroups(node.children, targetPath)
-          if (found) {
-            return found
-          }
-        }
-      }
-      return null
-    }
-
-    const existing = findInGroups(groups, dirPath)
+    // 只在当前层级查找（避免循环引用）
+    const existing = currentLevelNodes.find(
+      (node) => node.type === 'group' && node.name === dirName
+    )
+    
     if (existing) {
       return existing
     }
@@ -155,30 +139,21 @@ export function buildEnhancedGroupStructure(
       }
 
       const dirPath = parentDir.path.replace(/\\/g, '/')
-      const dirNode = getOrCreateDirectoryNode(dirPath, parentDir.name)
+      const dirNode = getOrCreateDirectoryNode(dirPath, parentDir.name, currentLevel)
 
-      // 检查是否已在当前层级
-      let foundInCurrentLevel = false
-      for (const node of currentLevel) {
-        if (node.id === dirNode.id) {
-          foundInCurrentLevel = true
-          if (node.type === 'group' && node.children) {
-            currentLevel = node.children
-          }
-          break
-        }
-      }
-
-      if (!foundInCurrentLevel) {
-        // 添加到当前层级
+      // 检查是否已在当前层级（dirNode 可能是新创建的或已存在的）
+      const existingIndex = currentLevel.findIndex((node) => node.id === dirNode.id)
+      
+      if (existingIndex === -1) {
+        // 新创建的节点，添加到当前层级
         currentLevel.push(dirNode)
-        if (dirNode.children) {
-          currentLevel = dirNode.children
-        } else {
-          dirNode.children = []
-          currentLevel = dirNode.children
-        }
       }
+      
+      // 移动到下一层级
+      if (!dirNode.children) {
+        dirNode.children = []
+      }
+      currentLevel = dirNode.children
     }
 
     // 添加蓝图节点到最深层级

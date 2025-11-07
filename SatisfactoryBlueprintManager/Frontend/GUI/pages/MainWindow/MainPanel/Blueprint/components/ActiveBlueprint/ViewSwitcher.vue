@@ -2,7 +2,7 @@
   <div class="view-switcher">
     <el-tabs v-model="currentView" @tab-change="handleViewChange">
       <el-tab-pane label="Tree 视图" name="tree" />
-      <el-tab-pane label="图标视图" name="icon" />
+      <el-tab-pane label="标签视图" name="icon" />
     </el-tabs>
   </div>
 </template>

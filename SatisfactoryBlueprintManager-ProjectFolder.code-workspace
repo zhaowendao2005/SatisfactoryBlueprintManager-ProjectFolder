@@ -8,7 +8,12 @@
 		},
 		{
 			"path": "C:/Users/zhaowendao/AppData/Local/FactoryGame/Saved/SaveGames/幸福工厂蓝图留档"
+		},
+		{
+			"path": "C:/Users/zhaowendao/AppData/Roaming/Electron/Data"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "SatisfactoryBlueprintManager-ProjectFolder"
+	}
 }

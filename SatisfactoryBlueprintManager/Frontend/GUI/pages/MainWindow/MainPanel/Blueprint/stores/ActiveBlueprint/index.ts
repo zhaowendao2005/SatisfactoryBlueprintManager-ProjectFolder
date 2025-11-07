@@ -7,6 +7,7 @@ import { deepTraverseAndLoad } from './ActiveBlueprint.deep-traversal'
 import { buildEnhancedGroupStructure } from './ActiveBlueprint.group-builder'
 import { detectDuplicates, allocateColors } from './ActiveBlueprint.duplicate-detector'
 import { useBlueprintSourceStore } from '../BlueprintSource'
+import { extractDirectoryPath } from '../../utils/tagHelpers'
 
 /**
  * ActiveBlueprint Store
@@ -26,6 +27,8 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
     currentConfigId: null,
     configList: [],
     treeData: [],
+    tags: [],
+    pathTagLevels: 3,  // 默认路径追踪级数
     // 重复检测相关状态
     duplicateMap: new Map(),
     colorMap: new Map(),
@@ -826,6 +829,8 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
           version: '1.0.0',
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          pathTagLevels: 3,  // 默认路径追踪级数
+          tags: [],
           tree: [{
             id: 'ungrouped',
             type: 'group',
@@ -862,6 +867,8 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
         // 3. 更新状态（确保类型正确）
         this.currentConfigId = configId
         this.treeData = configData.tree as ActiveBlueprintNode[]
+        this.tags = configData.tags || []
+        this.pathTagLevels = configData.pathTagLevels || 3
         this.rootNode = {
           id: 'root',
           name: '根分组',
@@ -869,7 +876,10 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
           children: configData.tree as ActiveBlueprintNode[],
         }
 
-        // 4. 持久化选择
+        // 4. 重新计算所有蓝图的 directoryPath
+        this.recalculateDirectoryPaths()
+
+        // 5. 持久化选择
         localStorage.setItem('lastConfigId', configId)
       } catch (error) {
         console.error('Failed to switch config:', error)
@@ -908,6 +918,8 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
           version: configData.version,
           createdAt: configData.createdAt,
           updatedAt: Date.now(),
+          pathTagLevels: this.pathTagLevels,
+          tags: this.tags,
           tree: serializedTree,
         }
 
@@ -1156,6 +1168,9 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
           ungroupedNode.children.push(...ungrouped)
         }
 
+        // 重新计算所有蓝图的 directoryPath（包括新添加的）
+        this.recalculateDirectoryPaths()
+
         // 更新 rootNode
         this.rootNode = {
           id: 'root',
@@ -1275,6 +1290,9 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
 
           ungroupedNode.children.push(...ungrouped)
         }
+
+        // 重新计算所有蓝图的 directoryPath（包括新添加的）
+        this.recalculateDirectoryPaths()
 
         // 更新 rootNode
         this.rootNode = {
@@ -1470,6 +1488,240 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
         groups,
         ungrouped: ungroupedNodes,
       }
+    },
+
+    /**
+     * 批量添加标签
+     * @param nodeIds 蓝图节点 ID 数组
+     * @param tagId 要添加的标签 ID
+     */
+    async batchAddTags(nodeIds: string[], tagId: string): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
+      if (nodeIds.length === 0) {
+        throw new Error('没有选中任何蓝图')
+      }
+
+      try {
+        // 查找所有节点并添加标签
+        const findAndUpdateNode = (nodes: ActiveBlueprintNode[]): void => {
+          for (const node of nodes) {
+            if (nodeIds.includes(node.id) && node.type === 'blueprint') {
+              // 确保 tags 数组存在
+              if (!node.tags) {
+                node.tags = []
+              }
+              // 如果标签不存在，则添加
+              if (!node.tags.includes(tagId)) {
+                node.tags.push(tagId)
+              }
+            }
+            if (node.children) {
+              findAndUpdateNode(node.children)
+            }
+          }
+        }
+
+        findAndUpdateNode(this.treeData)
+
+        // 更新 rootNode
+        this.rootNode = {
+          id: 'root',
+          name: '根分组',
+          type: 'group',
+          children: this.treeData,
+        }
+
+        // 保存配置
+        await this.saveCurrentConfig()
+      } catch (error) {
+        console.error('Failed to batch add tags:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 批量移除标签
+     * @param nodeIds 蓝图节点 ID 数组
+     * @param tagId 要移除的标签 ID
+     */
+    async batchRemoveTags(nodeIds: string[], tagId: string): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
+      if (nodeIds.length === 0) {
+        throw new Error('没有选中任何蓝图')
+      }
+
+      try {
+        // 查找所有节点并移除标签
+        const findAndUpdateNode = (nodes: ActiveBlueprintNode[]): void => {
+          for (const node of nodes) {
+            if (nodeIds.includes(node.id) && node.type === 'blueprint') {
+              if (node.tags) {
+                const index = node.tags.indexOf(tagId)
+                if (index !== -1) {
+                  node.tags.splice(index, 1)
+                }
+                // 如果 tags 数组为空，可以删除该字段（可选）
+                if (node.tags.length === 0) {
+                  delete node.tags
+                }
+              }
+            }
+            if (node.children) {
+              findAndUpdateNode(node.children)
+            }
+          }
+        }
+
+        findAndUpdateNode(this.treeData)
+
+        // 更新 rootNode
+        this.rootNode = {
+          id: 'root',
+          name: '根分组',
+          type: 'group',
+          children: this.treeData,
+        }
+
+        // 保存配置
+        await this.saveCurrentConfig()
+      } catch (error) {
+        console.error('Failed to batch remove tags:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 创建标签
+     * @param name 标签名称
+     * @param color 标签颜色
+     */
+    async createTag(name: string, color: string): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
+      if (!name || name.trim() === '') {
+        throw new Error('标签名称不能为空')
+      }
+
+      try {
+        // 检查标签是否已存在
+        const existingTag = this.tags.find((t) => t.name === name.trim())
+        if (existingTag) {
+          throw new Error('标签名称已存在')
+        }
+
+        // 生成标签 ID（使用时间戳 + 随机字符串）
+        const tagId = `tag-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+
+        // 添加标签
+        this.tags.push({
+          id: tagId,
+          name: name.trim(),
+          color: color || '#3B82F6',
+        })
+
+        // 保存配置
+        await this.saveCurrentConfig()
+      } catch (error) {
+        console.error('Failed to create tag:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 删除标签
+     * @param tagId 标签 ID
+     */
+    async deleteTag(tagId: string): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
+      try {
+        // 查找标签索引
+        const tagIndex = this.tags.findIndex((t) => t.id === tagId)
+        if (tagIndex === -1) {
+          throw new Error('标签不存在')
+        }
+
+        // 从所有蓝图中移除该标签
+        const removeTagFromNodes = (nodes: ActiveBlueprintNode[]): void => {
+          for (const node of nodes) {
+            if (node.type === 'blueprint' && node.tags) {
+              const index = node.tags.indexOf(tagId)
+              if (index !== -1) {
+                node.tags.splice(index, 1)
+              }
+            }
+            if (node.children) {
+              removeTagFromNodes(node.children)
+            }
+          }
+        }
+
+        removeTagFromNodes(this.treeData)
+
+        // 删除标签
+        this.tags.splice(tagIndex, 1)
+
+        // 保存配置
+        await this.saveCurrentConfig()
+      } catch (error) {
+        console.error('Failed to delete tag:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 设置路径追踪级数
+     * @param levels 追踪级数（1-6）
+     */
+    async setPathTagLevels(levels: number): Promise<void> {
+      if (!this.hasActiveConfig()) {
+        throw new Error('请先创建或选择一个配置')
+      }
+
+      if (levels < 1 || levels > 6) {
+        throw new Error('路径追踪级数必须在 1-6 之间')
+      }
+
+      try {
+        // 只修改状态，视图会通过 computed 自动响应
+        this.pathTagLevels = levels
+
+        // 保存配置（directoryPath 会在视图层动态计算，不需要存储）
+        await this.saveCurrentConfig()
+      } catch (error) {
+        console.error('Failed to set path tag levels:', error)
+        throw error
+      }
+    },
+
+    /**
+     * 重新计算所有蓝图的 directoryPath（仅用于保存时）
+     * @注意事项 directoryPath 现在主要在视图层动态计算，此方法用于确保配置文件包含最新路径
+     */
+    recalculateDirectoryPaths(): void {
+      const updatePaths = (nodes: ActiveBlueprintNode[]): void => {
+        for (const node of nodes) {
+          if (node.type === 'blueprint' && node.path) {
+            node.directoryPath = extractDirectoryPath(node.path, this.pathTagLevels)
+          }
+          if (node.children) {
+            updatePaths(node.children)
+          }
+        }
+      }
+
+      // 更新 treeData（用于保存到配置文件）
+      updatePaths(this.treeData)
     },
   },
 })
