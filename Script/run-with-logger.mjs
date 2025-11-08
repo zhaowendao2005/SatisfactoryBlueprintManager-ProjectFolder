@@ -131,9 +131,27 @@ function start() {
 	const command = commandAndArgs[0];
 	const cmdArgs = commandAndArgs.slice(1);
 
+	// 检测是否是 Electron 打包命令，如果是则设置 ELECTRON_CACHE 环境变量
+	const isElectronBuild = commandAndArgs.some(arg => 
+		typeof arg === 'string' && (
+			arg.includes('electron') || 
+			arg.includes('build') ||
+			arg.includes('quasar build -m electron')
+		)
+	);
+
+	// 设置 Electron 缓存目录（如果未设置）
+	const env = { ...process.env };
+	if (isElectronBuild && !env.ELECTRON_CACHE) {
+		const projectRoot = path.resolve(__dirname, '..');
+		const localCacheDir = path.join(projectRoot, 'LocalPackageCache');
+		env.ELECTRON_CACHE = localCacheDir;
+		console.log(`[logger] 设置 ELECTRON_CACHE=${localCacheDir}`);
+	}
+
 	const child = spawn(command, cmdArgs, {
 		shell: true,
-		env: process.env,
+		env: env,
 		windowsHide: false,
 	});
 

@@ -39,3 +39,6 @@ Thumbs.db
 
 # exe
 *AutomationService.exe
+
+# LocalPackageCache
+LocalPackageCache
