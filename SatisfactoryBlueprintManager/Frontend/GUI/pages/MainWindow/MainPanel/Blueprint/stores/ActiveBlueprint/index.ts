@@ -1661,6 +1661,90 @@ export const useActiveBlueprintStore = defineStore('activeBlueprint', {
       // 更新 treeData（用于保存到配置文件）
       updatePaths(this.treeData)
     },
+
+    /**
+     * 设置快速访问窗口数据同步
+     * @注意事项 在主窗口初始化完成后调用
+     */
+    setupQuickAccessSync(): void {
+      const globalTagsStore = useGlobalTagsStore()
+      
+      // 导入 watch 和 flattenBlueprintTree
+      import('vue').then(({ watch }) => {
+        import('../../utils/tagHelpers').then(({ flattenBlueprintTree }) => {
+          // 监听 treeData 变化
+          watch(
+            () => this.treeData,
+            () => {
+              // 延迟执行，避免频繁推送
+              setTimeout(() => {
+                try {
+                  const blueprints = flattenBlueprintTree(
+                    this.treeData,
+                    this.pathTagLevels
+                  )
+                  
+                  const result = blueprints.map(bp => ({
+                    id: bp.id,
+                    name: bp.name,
+                    path: bp.path || '',
+                    directoryPath: bp.directoryPath,
+                    tags: bp.path ? globalTagsStore.getBlueprintTags(bp.path) : []
+                  }))
+                  
+                  // 清理数据，移除不可序列化的内容
+                  const cleanedResult = JSON.parse(JSON.stringify(result))
+                  
+                  // 推送给主进程
+                  if (window.electronAPI?.pushBlueprintsToQuickAccess) {
+                    window.electronAPI.pushBlueprintsToQuickAccess(cleanedResult)
+                  }
+                  
+                  console.log('[ActiveBlueprintStore] 推送蓝图数据到快速访问窗口:', cleanedResult.length)
+                } catch (error) {
+                  console.error('[ActiveBlueprintStore] 推送蓝图数据失败:', error)
+                }
+              }, 100)
+            },
+            { deep: true }
+          )
+          
+          // 初始推送一次
+          setTimeout(() => {
+            try {
+              const blueprints = flattenBlueprintTree(
+                this.treeData,
+                this.pathTagLevels
+              )
+              
+              const result = blueprints.map(bp => ({
+                id: bp.id,
+                name: bp.name,
+                path: bp.path || '',
+                directoryPath: bp.directoryPath,
+                tags: bp.path ? globalTagsStore.getBlueprintTags(bp.path) : []
+              }))
+              
+              // 清理数据，移除不可序列化的内容
+              const cleanedResult = JSON.parse(JSON.stringify(result))
+              
+              // 推送给主进程
+              if (window.electronAPI?.pushBlueprintsToQuickAccess) {
+                window.electronAPI.pushBlueprintsToQuickAccess(cleanedResult)
+              }
+              
+              console.log('[ActiveBlueprintStore] 初始推送蓝图数据:', cleanedResult.length)
+            } catch (error) {
+              console.error('[ActiveBlueprintStore] 初始推送失败:', error)
+            }
+          }, 500)
+        }).catch(error => {
+          console.error('[ActiveBlueprintStore] 导入 tagHelpers 失败:', error)
+        })
+      }).catch(error => {
+        console.error('[ActiveBlueprintStore] 导入 vue 失败:', error)
+      })
+    },
   },
 })
 

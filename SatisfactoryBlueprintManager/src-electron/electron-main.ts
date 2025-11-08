@@ -14,9 +14,11 @@ import { registerAutomationConfigHandlers } from './Ipc/AutomationConfigHandler'
 import { registerBlueprintInfoHandlers } from './Ipc/BlueprintInfoHandler'
 import { registerShortcutHandlers } from './Ipc/ShortcutHandler'
 import { registerGeneralSettingsHandlers } from './Ipc/GeneralSettingsHandler'
+import { registerQuickAccessHandlers } from './Ipc/QuickAccessHandler'
 import { shortcutService } from './Service/Shortcut/ShortcutService'
 import { pythonServiceManager } from './Service/PythonServiceManager'
 import { trayService } from './Service/Tray/TrayService'
+import { quickAccessWindowService } from './Service/QuickAccess/QuickAccessWindowService'
 
 const platform = process.platform || os.platform()
 
@@ -49,6 +51,7 @@ async function createWindow(): Promise<void> {
   registerBlueprintInfoHandlers()
   registerShortcutHandlers()
   registerGeneralSettingsHandlers(mainWindow)
+  registerQuickAccessHandlers(mainWindow)
 
   // 4. 初始化快捷键服务
   shortcutService.setMainWindow(mainWindow)
@@ -56,6 +59,9 @@ async function createWindow(): Promise<void> {
 
   // 4.5. 创建托盘
   trayService.createTray(mainWindow)
+
+  // 4.6. 创建快速访问窗口（预创建但不显示）
+  await quickAccessWindowService.create(mainWindow)
 
   // 5. 窗口关闭清理
   mainWindow.on('closed', () => {
@@ -101,6 +107,9 @@ app.on('will-quit', async (event) => {
   
   // 销毁托盘
   trayService.destroy()
+  
+  // 销毁快速访问窗口
+  quickAccessWindowService.destroy()
   
   try {
     await pythonServiceManager.stop()

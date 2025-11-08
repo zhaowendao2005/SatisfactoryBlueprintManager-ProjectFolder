@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>快速访问窗口 Demo - 三合一演示</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: #1a1a1a;
+      overflow: hidden;
+    }
+
+    /* 快速访问窗口容器 */
+    .quick-access-window {
+      width: 500px;
+      height: 700px;
+      margin: 20px auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 顶部标签筛选器 */
+    .filter-section {
+      background: #f5f5f7;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e5e5e7;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .filter-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .filter-hint {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 10px;
+    }
+
+    .tag-group {
+      margin-bottom: 10px;
+    }
+
+    .tag-group-title {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+      border: 1px solid transparent;
+    }
+
+    .tag-chip.inactive {
+      background: #e5e5e7;
+      color: #666;
+    }
+
+    .tag-chip.inactive:hover {
+      background: #d1d1d6;
+    }
+
+    .tag-chip.active-and {
+      background: #34c759;
+      color: white;
+      border-color: #34c759;
+    }
+
+    .tag-chip.active-or {
+      background: #007AFF;
+      color: white;
+      border-color: #007AFF;
+    }
+
+    .tag-chip.active-not {
+      background: #ff3b30;
+      color: white;
+      border-color: #ff3b30;
+    }
+
+    .logic-badge {
+      font-size: 10px;
+      padding: 1px 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .clear-filters {
+      font-size: 12px;
+      color: #007AFF;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .clear-filters:hover {
+      text-decoration: underline;
+    }
+
+    /* 中间蓝图网格区域 */
+    .blueprint-section {
+      flex: 1;
+      background: #fafafa;
+      padding: 16px;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .blueprint-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 4px;
+    }
+
+    /* 蓝图图标 */
+    .blueprint-icon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 8px;
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .blueprint-icon:hover {
+      transform: translateY(-2px) scale(1.05);
+    }
+
+    .blueprint-icon:active {
+      transform: translateY(0) scale(1.0);
+    }
+
+    .icon-container {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .blueprint-icon:hover .icon-container {
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .icon-content {
+      font-size: 32px;
+      color: white;
+      font-weight: 600;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      z-index: 1;
+    }
+
+    /* 不同颜色的图标 */
+    .blueprint-icon:nth-child(4n+1) .icon-container {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .blueprint-icon:nth-child(4n+2) .icon-container {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .blueprint-icon:nth-child(4n+3) .icon-container {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .blueprint-icon:nth-child(4n+4) .icon-container {
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .icon-label {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #333;
+      text-align: center;
+      font-weight: 500;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.3;
+      user-select: none;
+    }
+
+    .icon-path-tag {
+      margin-top: 2px;
+      font-size: 9px;
+      color: #999;
+      text-align: center;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-select: none;
+    }
+
+    /* 选中状态 */
+    .blueprint-icon.selected .icon-container {
+      border: 3px solid #007AFF;
+      box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2), 0 6px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .blueprint-icon.selected .icon-label {
+      color: #007AFF;
+      font-weight: 600;
+    }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    /* 底部工具栏 */
+    .toolbar {
+      background: #ffffff;
+      border-top: 1px solid #e5e5e7;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .toolbar-left {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .toolbar-btn {
+      padding: 6px 12px;
+      background: #f5f5f7;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #333;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .toolbar-btn:hover {
+      background: #e5e5e7;
+    }
+
+    .toolbar-btn.active {
+      background: #007AFF;
+      color: white;
+    }
+
+    .toolbar-btn.danger {
+      color: #ff3b30;
+    }
+
+    .toolbar-btn.danger:hover {
+      background: #ffe5e5;
+    }
+
+    .info-text {
+      font-size: 11px;
+      color: #666;
+    }
+
+    /* 滚动条样式 */
+    .filter-section::-webkit-scrollbar,
+    .blueprint-section::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .filter-section::-webkit-scrollbar-thumb,
+    .blueprint-section::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+
+    .filter-section::-webkit-scrollbar-track,
+    .blueprint-section::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    /* 演示说明 */
+    .demo-info {
+      max-width: 500px;
+      margin: 0 auto 20px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: white;
+      text-align: center;
+    }
+
+    .demo-info h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .demo-info p {
+      font-size: 13px;
+      opacity: 0.8;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-info">
+    <h2>⚡ 快速访问窗口 Demo</h2>
+    <p>
+      模拟游戏中使用的快速访问窗口 | 
+      顶部：标签筛选器 | 
+      中间：桌面布局蓝图网格 | 
+      底部：快捷工具栏
+    </p>
+  </div>
+
+  <div class="quick-access-window">
+    <!-- 顶部标签筛选器 -->
+    <div class="filter-section">
+      <div class="filter-title">
+        <span>🏷️ 标签筛选</span>
+        <a href="#" class="clear-filters" onclick="clearAllFilters(); return false;">清除全部</a>
+      </div>
+      <div class="filter-hint">左键切换筛选 | 右键切换逻辑（与/或/非）</div>
+
+      <!-- 路径标签 -->
+      <div class="tag-group">
+        <div class="tag-group-title">📁 路径标签</div>
+        <div class="tag-list" id="pathTags">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+
+      <!-- 用户标签 -->
+      <div class="tag-group">
+        <div class="tag-group-title">🎨 用户标签</div>
+        <div class="tag-list" id="userTags">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 中间蓝图网格 -->
+    <div class="blueprint-section">
+      <div class="blueprint-grid" id="blueprintGrid">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+
+    <!-- 底部工具栏 -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="toolbar-btn" id="pinBtn" onclick="togglePin()">
+          <span id="pinIcon">📌</span>
+          <span id="pinText">置顶</span>
+        </button>
+        <button class="toolbar-btn" onclick="refreshData()">
+          <span>🔄</span>
+          <span>刷新</span>
+        </button>
+      </div>
+      <div class="info-text">
+        显示 <strong id="blueprintCount">0</strong> 个蓝图
+      </div>
+      <button class="toolbar-btn danger" onclick="closeWindow()">
+        <span>✕</span>
+        <span>关闭</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 模拟数据
+    const mockBlueprints = [
+      { id: '1', name: '铁矿采集站', path: 'Production/Mining', tags: ['path:Production', 'path:Mining', 'tag:早期', 'tag:采集'] },
+      { id: '2', name: '铜矿采集站', path: 'Production/Mining', tags: ['path:Production', 'path:Mining', 'tag:早期', 'tag:采集'] },
+      { id: '3', name: '铁锭熔炉', path: 'Production/Smelting', tags: ['path:Production', 'path:Smelting', 'tag:早期', 'tag:冶炼'] },
+      { id: '4', name: '铜锭熔炉', path: 'Production/Smelting', tags: ['path:Production', 'path:Smelting', 'tag:早期', 'tag:冶炼'] },
+      { id: '5', name: '基础装配厂', path: 'Production/Assembly', tags: ['path:Production', 'path:Assembly', 'tag:中期', 'tag:制造'] },
+      { id: '6', name: '铁板生产线', path: 'Production/Assembly', tags: ['path:Production', 'path:Assembly', 'tag:早期', 'tag:制造'] },
+      { id: '7', name: '铁棒生产线', path: 'Production/Assembly', tags: ['path:Production', 'path:Assembly', 'tag:早期', 'tag:制造'] },
+      { id: '8', name: '螺丝生产线', path: 'Production/Assembly', tags: ['path:Production', 'path:Assembly', 'tag:早期', 'tag:制造'] },
+      { id: '9', name: '发电厂', path: 'Power/Coal', tags: ['path:Power', 'path:Coal', 'tag:早期', 'tag:电力'] },
+      { id: '10', name: '供水系统', path: 'Power/Coal', tags: ['path:Power', 'path:Coal', 'tag:早期', 'tag:电力'] },
+      { id: '11', name: '立体车库', path: 'Logistics/Storage', tags: ['path:Logistics', 'path:Storage', 'tag:装饰', 'tag:物流'] },
+      { id: '12', name: '集装箱组', path: 'Logistics/Storage', tags: ['path:Logistics', 'path:Storage', 'tag:装饰', 'tag:物流'] },
+      { id: '13', name: '传送带枢纽', path: 'Logistics/Transport', tags: ['path:Logistics', 'path:Transport', 'tag:中期', 'tag:物流'] },
+      { id: '14', name: '管道枢纽', path: 'Logistics/Transport', tags: ['path:Logistics', 'path:Transport', 'tag:中期', 'tag:物流'] },
+      { id: '15', name: '装饰天线A', path: 'Decoration/Antenna', tags: ['path:Decoration', 'path:Antenna', 'tag:装饰'] },
+      { id: '16', name: '装饰天线B', path: 'Decoration/Antenna', tags: ['path:Decoration', 'path:Antenna', 'tag:装饰'] },
+    ]
+
+    const pathTags = [
+      { id: 'path:Production', name: 'Production', parent: null },
+      { id: 'path:Mining', name: 'Mining', parent: 'path:Production' },
+      { id: 'path:Smelting', name: 'Smelting', parent: 'path:Production' },
+      { id: 'path:Assembly', name: 'Assembly', parent: 'path:Production' },
+      { id: 'path:Power', name: 'Power', parent: null },
+      { id: 'path:Coal', name: 'Coal', parent: 'path:Power' },
+      { id: 'path:Logistics', name: 'Logistics', parent: null },
+      { id: 'path:Storage', name: 'Storage', parent: 'path:Logistics' },
+      { id: 'path:Transport', name: 'Transport', parent: 'path:Logistics' },
+      { id: 'path:Decoration', name: 'Decoration', parent: null },
+      { id: 'path:Antenna', name: 'Antenna', parent: 'path:Decoration' },
+    ]
+
+    const userTags = [
+      { id: 'tag:早期', name: '早期' },
+      { id: 'tag:中期', name: '中期' },
+      { id: 'tag:采集', name: '采集' },
+      { id: 'tag:冶炼', name: '冶炼' },
+      { id: 'tag:制造', name: '制造' },
+      { id: 'tag:电力', name: '电力' },
+      { id: 'tag:物流', name: '物流' },
+      { id: 'tag:装饰', name: '装饰' },
+    ]
+
+    // 标签筛选状态 Map<tagId, 'and' | 'or' | 'not'>
+    const activeFilters = new Map()
+
+    // 置顶状态
+    let isPinned = false
+
+    // 初始化
+    function init() {
+      renderPathTags()
+      renderUserTags()
+      renderBlueprints()
+    }
+
+    // 渲染路径标签
+    function renderPathTags() {
+      const container = document.getElementById('pathTags')
+      container.innerHTML = pathTags.map(tag => {
+        const logic = activeFilters.get(tag.id)
+        const activeClass = logic ? `active-${logic}` : 'inactive'
+        const badge = logic ? `<span class="logic-badge">${getLogicLabel(logic)}</span>` : ''
+        
+        return `
+          <div 
+            class="tag-chip ${activeClass}" 
+            onclick="toggleTag('${tag.id}')"
+            oncontextmenu="changeLogic(event, '${tag.id}')"
+          >
+            ${badge}${tag.name}
+          </div>
+        `
+      }).join('')
+    }
+
+    // 渲染用户标签
+    function renderUserTags() {
+      const container = document.getElementById('userTags')
+      container.innerHTML = userTags.map(tag => {
+        const logic = activeFilters.get(tag.id)
+        const activeClass = logic ? `active-${logic}` : 'inactive'
+        const badge = logic ? `<span class="logic-badge">${getLogicLabel(logic)}</span>` : ''
+        
+        return `
+          <div 
+            class="tag-chip ${activeClass}" 
+            onclick="toggleTag('${tag.id}')"
+            oncontextmenu="changeLogic(event, '${tag.id}')"
+          >
+            ${badge}${tag.name}
+          </div>
+        `
+      }).join('')
+    }
+
+    // 渲染蓝图
+    function renderBlueprints() {
+      const filtered = filterBlueprints()
+      const container = document.getElementById('blueprintGrid')
+      
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-state-icon">📭</div>
+            <div>没有找到符合条件的蓝图</div>
+          </div>
+        `
+      } else {
+        container.innerHTML = filtered.map(bp => `
+          <div class="blueprint-icon" onclick="useBlueprint('${bp.id}')">
+            <div class="icon-container">
+              <div class="icon-content">${bp.name.substring(0, 2)}</div>
+            </div>
+            <div class="icon-label" title="${bp.name}">${bp.name}</div>
+            <div class="icon-path-tag">${bp.path.split('/').pop()}</div>
+          </div>
+        `).join('')
+      }
+
+      document.getElementById('blueprintCount').textContent = filtered.length
+    }
+
+    // 筛选蓝图
+    function filterBlueprints() {
+      if (activeFilters.size === 0) return mockBlueprints
+
+      return mockBlueprints.filter(bp => {
+        const andTags = []
+        const orTags = []
+        const notTags = []
+
+        activeFilters.forEach((logic, tagId) => {
+          if (logic === 'and') andTags.push(tagId)
+          else if (logic === 'or') orTags.push(tagId)
+          else if (logic === 'not') notTags.push(tagId)
+        })
+
+        // 1. 非(NOT)：不能匹配任何"非"标签
+        if (notTags.length > 0) {
+          if (notTags.some(tagId => matchesTag(bp, tagId))) {
+            return false
+          }
+        }
+
+        // 2. 与(AND)：必须匹配所有"与"标签
+        if (andTags.length > 0) {
+          if (!andTags.every(tagId => matchesTag(bp, tagId))) {
+            return false
+          }
+        }
+
+        // 3. 或(OR)：需要匹配至少一个"或"标签
+        if (orTags.length > 0) {
+          if (!orTags.some(tagId => matchesTag(bp, tagId))) {
+            return false
+          }
+        }
+
+        return true
+      })
+    }
+
+    // 匹配标签（支持路径前缀匹配）
+    function matchesTag(blueprint, tagId) {
+      if (blueprint.tags.includes(tagId)) return true
+      
+      // 路径标签：检查是否匹配父级路径
+      if (tagId.startsWith('path:')) {
+        return blueprint.tags.some(bpTag => 
+          bpTag.startsWith('path:') && bpTag.startsWith(tagId)
+        )
+      }
+      
+      return false
+    }
+
+    // 切换标签
+    function toggleTag(tagId) {
+      if (activeFilters.has(tagId)) {
+        activeFilters.delete(tagId)
+      } else {
+        activeFilters.set(tagId, 'or') // 默认"或"逻辑
+      }
+      
+      renderPathTags()
+      renderUserTags()
+      renderBlueprints()
+    }
+
+    // 改变逻辑（右键）
+    function changeLogic(event, tagId) {
+      event.preventDefault()
+      
+      if (!activeFilters.has(tagId)) {
+        activeFilters.set(tagId, 'or')
+      } else {
+        const current = activeFilters.get(tagId)
+        const next = current === 'or' ? 'and' : (current === 'and' ? 'not' : 'or')
+        activeFilters.set(tagId, next)
+      }
+      
+      renderPathTags()
+      renderUserTags()
+      renderBlueprints()
+    }
+
+    // 清除所有筛选
+    function clearAllFilters() {
+      activeFilters.clear()
+      renderPathTags()
+      renderUserTags()
+      renderBlueprints()
+    }
+
+    // 逻辑标签
+    function getLogicLabel(logic) {
+      return logic === 'and' ? '与' : (logic === 'or' ? '或' : '非')
+    }
+
+    // 切换置顶
+    function togglePin() {
+      isPinned = !isPinned
+      const btn = document.getElementById('pinBtn')
+      const icon = document.getElementById('pinIcon')
+      const text = document.getElementById('pinText')
+      
+      if (isPinned) {
+        btn.classList.add('active')
+        icon.textContent = '📍'
+        text.textContent = '已置顶'
+        alert('窗口已置顶（模拟）')
+      } else {
+        btn.classList.remove('active')
+        icon.textContent = '📌'
+        text.textContent = '置顶'
+        alert('已取消置顶（模拟）')
+      }
+    }
+
+    // 刷新数据
+    function refreshData() {
+      alert('刷新数据（模拟）')
+      renderBlueprints()
+    }
+
+    // 使用蓝图
+    function useBlueprint(id) {
+      const bp = mockBlueprints.find(b => b.id === id)
+      alert(`使用蓝图: ${bp.name}\n路径: ${bp.path}\n\n（模拟：将通过IPC转发给主窗口，调用Python自动化服务）`)
+    }
+
+    // 关闭窗口
+    function closeWindow() {
+      if (confirm('确定要关闭快速访问窗口吗？')) {
+        alert('窗口已隐藏（模拟）\n实际使用中，按快捷键可再次唤出')
+      }
+    }
+
+    // 启动
+    init()
+  </script>
+</body>
+</html>

@@ -48,7 +48,17 @@ export class GeneralSettingsFileService {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         console.log('[GeneralSettingsFileService] 通用设置文件不存在，返回默认配置')
         // 返回默认配置
-        return { closeWindowBehavior: 'minimize-to-tray' }
+        return {
+          closeWindowBehavior: 'minimize-to-tray',
+          quickAccessShortcut: 'CommandOrControl+Shift+Q',
+          quickAccessAlwaysOnTop: true,
+          quickAccessAutoHideAfterUse: true,
+          quickAccessRecentBlueprintsCount: 10,
+          quickAccessWindowSize: {
+            width: 500,
+            height: 700,
+          },
+        }
       }
       console.error('[GeneralSettingsFileService] 加载通用设置失败:', error)
       throw error

@@ -6,6 +6,8 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { app, globalShortcut, BrowserWindow } from 'electron'
 import type { ShortcutConfig } from '../../../public/types/shortcut-config'
+import { generalSettingsFileService } from '../GeneralSettings/file-service'
+import { quickAccessWindowService } from '../QuickAccess/QuickAccessWindowService'
 
 const CONFIG_DIR_NAME = 'Data'
 const SHORTCUT_CONFIG_FILE = 'ShortcutConfig.json'
@@ -59,7 +61,7 @@ async function saveShortcutConfig(config: ShortcutConfig): Promise<void> {
 /**
  * 注册全局快捷键
  */
-function registerShortcuts(config: ShortcutConfig, mainWindow: BrowserWindow | null): boolean {
+async function registerShortcuts(config: ShortcutConfig, mainWindow: BrowserWindow | null): Promise<boolean> {
   if (!mainWindow) {
     console.warn('Cannot register shortcuts: mainWindow is null')
     return false
@@ -68,8 +70,10 @@ function registerShortcuts(config: ShortcutConfig, mainWindow: BrowserWindow | n
   // 先注销所有快捷键
   globalShortcut.unregisterAll()
 
+  let allSuccess = true
+
   // 注册窗口切换快捷键
-  const success = globalShortcut.register(config.toggleWindow, () => {
+  const mainWindowSuccess = globalShortcut.register(config.toggleWindow, () => {
     if (!mainWindow) return
 
     if (mainWindow.isVisible() && !mainWindow.isMinimized()) {
@@ -83,11 +87,32 @@ function registerShortcuts(config: ShortcutConfig, mainWindow: BrowserWindow | n
     }
   })
 
-  if (!success) {
-    console.error(`Failed to register shortcut: ${config.toggleWindow}`)
+  if (!mainWindowSuccess) {
+    console.error(`Failed to register main window shortcut: ${config.toggleWindow}`)
+    allSuccess = false
   }
 
-  return success
+  // 注册快速访问窗口快捷键
+  try {
+    const generalSettings = await generalSettingsFileService.loadSettings()
+    const quickAccessShortcut = generalSettings.quickAccessShortcut || 'CommandOrControl+Shift+Q'
+    
+    const quickAccessSuccess = globalShortcut.register(quickAccessShortcut, () => {
+      quickAccessWindowService.toggle()
+    })
+
+    if (!quickAccessSuccess) {
+      console.error(`Failed to register quick access shortcut: ${quickAccessShortcut}`)
+      allSuccess = false
+    } else {
+      console.log(`[ShortcutService] 快速访问快捷键已注册: ${quickAccessShortcut}`)
+    }
+  } catch (error) {
+    console.error('[ShortcutService] 注册快速访问快捷键失败:', error)
+    allSuccess = false
+  }
+
+  return allSuccess
 }
 
 /**
@@ -125,7 +150,7 @@ export class ShortcutService {
    */
   async initialize(): Promise<void> {
     const config = await readShortcutConfig()
-    registerShortcuts(config, this.mainWindow)
+    await registerShortcuts(config, this.mainWindow)
   }
 
   /**
@@ -140,7 +165,15 @@ export class ShortcutService {
    */
   async saveConfig(config: ShortcutConfig): Promise<void> {
     await saveShortcutConfig(config)
-    registerShortcuts(config, this.mainWindow)
+    await registerShortcuts(config, this.mainWindow)
+  }
+
+  /**
+   * 重新注册快速访问快捷键（当通用设置更新时调用）
+   */
+  async reregisterQuickAccessShortcut(): Promise<void> {
+    const config = await readShortcutConfig()
+    await registerShortcuts(config, this.mainWindow)
   }
 
   /**

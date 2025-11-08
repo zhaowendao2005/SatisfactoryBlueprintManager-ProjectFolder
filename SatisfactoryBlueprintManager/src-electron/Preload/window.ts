@@ -13,6 +13,16 @@ export const exposeWindowAPI = (): void => {
         callback(isMaximized)
       })
     },
+    // 主窗口推送蓝图数据给快速访问窗口
+    pushBlueprintsToQuickAccess: (blueprints: Array<{
+      id: string
+      name: string
+      path: string
+      directoryPath?: string
+      tags: string[]
+    }>) => {
+      ipcRenderer.send('main-window:push-blueprints', blueprints)
+    },
   })
 }
 

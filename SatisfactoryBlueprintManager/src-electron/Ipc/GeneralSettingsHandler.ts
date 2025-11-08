@@ -4,6 +4,8 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { generalSettingsFileService } from '../Service/GeneralSettings/file-service'
 import { trayService } from '../Service/Tray/TrayService'
+import { shortcutService } from '../Service/Shortcut/ShortcutService'
+import { quickAccessWindowService } from '../Service/QuickAccess/QuickAccessWindowService'
 import type { GeneralSettingsConfig } from '../../public/types/general-settings'
 
 const IPC_CHANNEL_LOAD_SETTINGS = 'general-settings:load'
@@ -31,8 +33,35 @@ export function registerGeneralSettingsHandlers(mainWindow: BrowserWindow): void
   // 保存设置
   ipcMain.handle(IPC_CHANNEL_SAVE_SETTINGS, async (_event, config: GeneralSettingsConfig): Promise<void> => {
     try {
+      const oldSettings = currentSettings
       await generalSettingsFileService.saveSettings(config)
       currentSettings = config
+
+      // 如果快速访问快捷键或置顶设置发生变化，更新窗口
+      if (oldSettings) {
+        if (oldSettings.quickAccessShortcut !== config.quickAccessShortcut) {
+          // 重新注册快速访问快捷键
+          await shortcutService.reregisterQuickAccessShortcut()
+        }
+
+        if (oldSettings.quickAccessAlwaysOnTop !== config.quickAccessAlwaysOnTop) {
+          // 更新窗口置顶状态
+          await quickAccessWindowService.updateConfig({
+            alwaysOnTop: config.quickAccessAlwaysOnTop ?? true,
+          })
+        }
+
+        if (oldSettings.quickAccessWindowSize?.width !== config.quickAccessWindowSize?.width ||
+            oldSettings.quickAccessWindowSize?.height !== config.quickAccessWindowSize?.height) {
+          // 更新窗口尺寸
+          if (config.quickAccessWindowSize) {
+            await quickAccessWindowService.updateConfig({
+              width: config.quickAccessWindowSize.width,
+              height: config.quickAccessWindowSize.height,
+            })
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to save general settings:', error)
       throw error

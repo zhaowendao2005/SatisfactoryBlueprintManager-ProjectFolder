@@ -11,6 +11,7 @@ import { exposeAutomationConfigAPI } from './Preload/automation-config'
 import { exposeBlueprintInfoAPI } from './Preload/blueprint-info'
 import { exposeShortcutConfigAPI } from './Preload/shortcut'
 import { exposeGeneralSettingsAPI } from './Preload/general-settings'
+import { exposeQuickAccessAPI } from './Preload/quick-access'
 
 // 暴露窗口控制 API
 exposeWindowAPI()
@@ -38,6 +39,9 @@ exposeShortcutConfigAPI()
 
 // 暴露通用设置 API
 exposeGeneralSettingsAPI()
+
+// 暴露快速访问窗口 API
+exposeQuickAccessAPI()
 
 // 其他 API 暴露...
 

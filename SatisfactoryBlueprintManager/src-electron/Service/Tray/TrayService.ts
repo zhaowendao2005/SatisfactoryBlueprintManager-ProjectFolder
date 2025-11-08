@@ -5,6 +5,7 @@
 import { Tray, Menu, BrowserWindow, nativeImage, app } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { quickAccessWindowService } from '../QuickAccess/QuickAccessWindowService'
 
 const currentDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -87,6 +88,15 @@ class TrayService {
         label: '隐藏窗口',
         click: () => {
           this.hideWindow()
+        },
+      },
+      {
+        type: 'separator',
+      },
+      {
+        label: '快速访问',
+        click: () => {
+          quickAccessWindowService.toggle()
         },
       },
       {

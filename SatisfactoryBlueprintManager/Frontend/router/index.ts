@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: '/quick-access',
+    name: 'quick-access',
+    component: () => import('@gui/pages/QuickAccess/Index.vue'),
+  },
 
   // Always leave this as last one,
   // but you can also remove it

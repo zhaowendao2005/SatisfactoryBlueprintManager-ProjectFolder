@@ -21,8 +21,19 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import MainWindowTitleBar from './Shell/MainWindow.TitleBar/index.vue'
 import MainWindowNavbar from './Shell/MainWindow.Navbar/index.vue'
+import { useActiveBlueprintStore } from './MainPanel/Blueprint/stores/ActiveBlueprint'
+
+onMounted(() => {
+  // 延迟一段时间，等待 store 初始化完成
+  setTimeout(() => {
+    const activeBlueprintStore = useActiveBlueprintStore()
+    activeBlueprintStore.setupQuickAccessSync()
+    console.log('[MainWindow] 已启用快速访问数据同步')
+  }, 1500)
+})
 </script>
 
 <style scoped lang="scss">

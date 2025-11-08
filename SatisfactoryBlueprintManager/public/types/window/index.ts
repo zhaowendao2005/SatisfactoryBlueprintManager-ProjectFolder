@@ -12,6 +12,14 @@ export interface ElectronWindowAPI {
   windowControl: (action: WindowControlAction) => Promise<void>
   /** 监听窗口最大化状态变化 */
   onMaximizeChange: (callback: (isMaximized: boolean) => void) => void
+  /** 主窗口推送蓝图数据给快速访问窗口 */
+  pushBlueprintsToQuickAccess: (blueprints: Array<{
+    id: string
+    name: string
+    path: string
+    directoryPath?: string
+    tags: string[]
+  }>) => void
 }
 
 /**
@@ -272,6 +280,95 @@ export interface ElectronGeneralSettingsAPI {
   hideWindow(): Promise<void>
 }
 
+/**
+ * 快速访问窗口 Electron IPC API
+ * @注意事项 仅在 Electron 环境可用
+ */
+export interface ElectronQuickAccessAPI {
+  /**
+   * 订阅全局标签数据
+   */
+  subscribeGlobalTags(): Promise<{
+    version: string
+    tags: Array<{
+      id: string
+      name: string
+      color: string
+    }>
+    blueprintTags: Record<string, string[]>
+  }>
+
+  /**
+   * 取消订阅
+   */
+  unsubscribe(): void
+
+  /**
+   * 获取蓝图列表（从主窗口获取）
+   */
+  getBlueprints(): Promise<Array<{
+    id: string
+    name: string
+    path: string
+    directoryPath?: string
+    tags: string[]
+  }>>
+
+  /**
+   * 使用蓝图（转发给主窗口）
+   */
+  useBlueprint(blueprintPath: string): Promise<void>
+
+  /**
+   * 记录蓝图使用（用于最近使用列表）
+   */
+  recordBlueprintUsage(blueprintPath: string): Promise<void>
+
+  /**
+   * 获取最近使用的蓝图列表
+   */
+  getRecentBlueprints(): Promise<Array<{ path: string; timestamp: number }>>
+
+  /**
+   * 监听全局标签更新事件
+   */
+  onGlobalTagsUpdated(callback: (config: {
+    version: string
+    tags: Array<{
+      id: string
+      name: string
+      color: string
+    }>
+    blueprintTags: Record<string, string[]>
+  }) => void): () => void
+
+  /**
+   * 监听蓝图数据更新事件（主窗口推送）
+   */
+  onBlueprintsUpdated(callback: (blueprints: Array<{
+    id: string
+    name: string
+    path: string
+    directoryPath?: string
+    tags: string[]
+  }>) => void): () => void
+
+  /**
+   * 显示快速访问窗口
+   */
+  showQuickAccess(): Promise<void>
+
+  /**
+   * 隐藏快速访问窗口
+   */
+  hideQuickAccess(): Promise<void>
+
+  /**
+   * 切换快速访问窗口
+   */
+  toggleQuickAccess(): Promise<void>
+}
+
 declare global {
   interface Window {
     electronAPI?: ElectronWindowAPI
@@ -282,6 +379,7 @@ declare global {
     blueprintInfoAPI?: ElectronBlueprintInfoAPI
     shortcutConfigAPI?: ElectronShortcutConfigAPI
     generalSettingsAPI?: ElectronGeneralSettingsAPI
+    quickAccessAPI?: ElectronQuickAccessAPI
   }
 }
 
