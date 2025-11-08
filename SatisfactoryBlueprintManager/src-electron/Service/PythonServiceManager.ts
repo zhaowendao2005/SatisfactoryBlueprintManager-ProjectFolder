@@ -163,26 +163,54 @@ export class PythonServiceManager {
     console.log('[PythonService] 停止服务...')
     
     if (this.process) {
-      // 先尝试优雅关闭
-      this.process.kill('SIGTERM')
+      // 检查进程是否还在运行
+      if (this.process.killed || this.process.exitCode !== null) {
+        console.log('[PythonService] 进程已退出')
+        this.process = null
+        this.status = ServiceStatus.STOPPED
+        return
+      }
       
-      // 等待最多 5 秒
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          if (this.process && !this.process.killed) {
-            console.log('[PythonService] 优雅关闭超时，强制终止')
-            this.process.kill('SIGKILL')
-          }
-          resolve()
-        }, 5000)
+      try {
+        // Windows 上使用不带参数的 kill()，其他平台使用 SIGTERM
+        const isWindows = process.platform === 'win32'
         
-        this.process?.once('exit', () => {
-          clearTimeout(timeout)
-          resolve()
+        if (isWindows) {
+          // Windows: 直接终止进程
+          this.process.kill()
+        } else {
+          // Unix: 先尝试优雅关闭
+          this.process.kill('SIGTERM')
+        }
+        
+        // 等待最多 5 秒
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(() => {
+            if (this.process && !this.process.killed && this.process.exitCode === null) {
+              console.log('[PythonService] 优雅关闭超时，强制终止')
+              try {
+                if (isWindows) {
+                  this.process.kill()
+                } else {
+                  this.process.kill('SIGKILL')
+                }
+              } catch (error) {
+                console.error('[PythonService] 强制终止失败:', error)
+              }
+            }
+            resolve()
+          }, 5000)
+          
+          this.process?.once('exit', () => {
+            clearTimeout(timeout)
+            resolve()
+          })
         })
-      })
-      
-      this.process = null
+      } catch (error) {
+        console.error('[PythonService] 停止进程时出错:', error)
+      } finally {
+        this.process = null
+      }
     }
     
     this.status = ServiceStatus.STOPPED

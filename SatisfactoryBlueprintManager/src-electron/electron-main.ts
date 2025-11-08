@@ -19,6 +19,7 @@ import { shortcutService } from './Service/Shortcut/ShortcutService'
 import { pythonServiceManager } from './Service/PythonServiceManager'
 import { trayService } from './Service/Tray/TrayService'
 import { quickAccessWindowService } from './Service/QuickAccess/QuickAccessWindowService'
+import { loggerService } from './Service/Logger/LoggerService'
 
 const platform = process.platform || os.platform()
 
@@ -71,9 +72,21 @@ async function createWindow(): Promise<void> {
 }
 
 /**
- * 应用就绪时创建窗口
+ * 应用就绪时初始化日志服务并创建窗口
  */
-void app.whenReady().then(createWindow)
+void app.whenReady().then(async () => {
+  // 首先初始化日志服务（必须在应用 ready 后才能获取 userData）
+  try {
+    await loggerService.initialize()
+    console.log('[Main] 日志服务初始化完成')
+  } catch (error) {
+    console.error('[Main] 日志服务初始化失败:', error)
+    // 即使日志服务初始化失败，也继续启动应用
+  }
+  
+  // 然后创建窗口
+  await createWindow()
+})
 
 /**
  * 所有窗口关闭时退出应用（macOS 除外）
@@ -102,6 +115,12 @@ app.on('will-quit', async (event) => {
   
   console.log('[Main] 应用退出中，清理资源...')
   
+  // 确保主窗口被销毁（如果还存在）
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.removeAllListeners('close') // 移除可能阻止关闭的监听器
+    mainWindow.destroy()
+  }
+  
   // 注销所有快捷键
   shortcutService.unregisterAll()
   
@@ -117,6 +136,14 @@ app.on('will-quit', async (event) => {
   } catch (error) {
     console.error('[Main] 停止 Python 服务失败:', error)
   } finally {
+    // 关闭日志服务
+    try {
+      await loggerService.close()
+      console.log('[Main] 日志服务已关闭')
+    } catch (error) {
+      console.error('[Main] 关闭日志服务失败:', error)
+    }
+    
     // 清理完成后退出
     app.exit(0)
   }

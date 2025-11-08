@@ -30,7 +30,6 @@ const iconComponentMap: Record<string, Component> = {
   // 工厂/建筑相关
   'factory': Folder,
   'plant': Folder,
-  'manufacturing': Folder,
   '工厂': Folder,
   'building': Folder,
   'construction': Folder,

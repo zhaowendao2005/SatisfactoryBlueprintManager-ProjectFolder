@@ -42,24 +42,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import type { TitlebarProps } from './types'
-import type { ElectronWindowAPI } from '@gui/types/window'
 
 const props = withDefaults(defineProps<TitlebarProps>(), {
   title: 'Satisfactory Blueprint Manager',
   showIcon: true,
 })
 
-const isElectron = ref(false)
+// 使用 computed 确保响应式检查
+const isElectron = computed(() => {
+  return typeof window !== 'undefined' && window.electronAPI !== undefined
+})
+
 const isMaximized = ref(false)
 
-const checkElectron = () => {
-  isElectron.value = typeof window !== 'undefined' && window.electronAPI !== undefined
-}
-
 const handleMinimize = async () => {
-  if (!isElectron.value || !window.electronAPI) return
+  if (!window.electronAPI) return
   try {
     await window.electronAPI.windowControl('minimize')
   } catch (error) {
@@ -68,7 +67,7 @@ const handleMinimize = async () => {
 }
 
 const handleMaximize = async () => {
-  if (!isElectron.value || !window.electronAPI) return
+  if (!window.electronAPI) return
   try {
     await window.electronAPI.windowControl(isMaximized.value ? 'unmaximize' : 'maximize')
   } catch (error) {
@@ -77,7 +76,7 @@ const handleMaximize = async () => {
 }
 
 const handleClose = async () => {
-  if (!isElectron.value || !window.electronAPI) return
+  if (!window.electronAPI) return
   try {
     await window.electronAPI.windowControl('close')
   } catch (error) {
@@ -88,9 +87,7 @@ const handleClose = async () => {
 let maximizeChangeCallback: ((isMaximized: boolean) => void) | null = null
 
 onMounted(() => {
-  checkElectron()
-  
-  if (isElectron.value && window.electronAPI) {
+  if (window.electronAPI) {
     maximizeChangeCallback = (maximized: boolean) => {
       isMaximized.value = maximized
     }

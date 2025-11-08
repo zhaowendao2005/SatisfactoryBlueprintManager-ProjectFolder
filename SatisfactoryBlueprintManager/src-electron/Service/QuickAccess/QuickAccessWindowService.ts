@@ -2,13 +2,11 @@
  * 快速访问窗口服务（Electron 主进程）
  * 负责快速访问窗口的生命周期管理
  */
-import { BrowserWindow, BrowserWindowConstructorOptions, screen } from 'electron'
+import { app, BrowserWindow, BrowserWindowConstructorOptions, screen } from 'electron'
 import path from 'path'
-import { fileURLToPath } from 'url'
+import { existsSync } from 'fs'
 import type { GeneralSettingsConfig } from '../../../public/types/general-settings'
 import { generalSettingsFileService } from '../GeneralSettings/file-service'
-
-const currentDir = fileURLToPath(new URL('.', import.meta.url))
 
 /**
  * 快速访问窗口配置
@@ -62,6 +60,21 @@ class QuickAccessWindowService {
     // 计算窗口位置（居中或使用保存的位置）
     const { x, y } = this.calculateWindowPosition()
 
+    // 调试：快速访问窗口 preload 路径
+    const appPath = app.getAppPath()
+    const preloadPath = process.env.QUASAR_ELECTRON_PRELOAD_FOLDER
+      ? path.join(  // 使用 app.getAppPath() 访问 asar 内的文件
+          appPath,
+          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
+          'electron-preload' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
+        )
+      : path.join(appPath, 'electron-preload.cjs')
+    
+    console.log('[QuickAccessWindowService] ========== 快速访问窗口路径调试 ==========')
+    console.log('[QuickAccessWindowService] preload 路径:', preloadPath)
+    console.log('[QuickAccessWindowService] preload 文件存在:', existsSync(preloadPath))
+    console.log('[QuickAccessWindowService] ==========================================')
+
     const windowOptions: BrowserWindowConstructorOptions = {
       width: this.config.width,
       height: this.config.height,
@@ -77,10 +90,8 @@ class QuickAccessWindowService {
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
-        preload: path.join(
-          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER || '',
-          'electron-preload' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
-        ),
+        // 标准路径方案：开发环境使用 Quasar 环境变量，生产环境使用 app.getAppPath()
+        preload: preloadPath,
       },
     }
 

@@ -135,7 +135,7 @@ export default configure((ctx) => {
         [
           'vite-plugin-checker',
           {
-            vueTsc: true,
+            vueTsc: process.env.SKIP_LINT === 'true' ? false : true,
             eslint: process.env.SKIP_LINT === 'true' ? false : {
               lintCommand: 'eslint -c ./eslint.config.js "./Frontend*/**/*.{ts,js,mjs,cjs,vue}"',
               useFlatConfig: true,
@@ -270,6 +270,57 @@ export default configure((ctx) => {
         // https://www.electron.build/configuration/configuration
 
         appId: 'satisfactoryblueprintmanager',
+        productName: 'SatisfactoryBlueprintManager',
+        
+        // 输出目录
+        directories: {
+          output: 'dist/electron/Installer'
+        },
+        
+        // Windows 平台配置
+        win: {
+          target: [
+            {
+              target: 'nsis',
+              arch: ['x64']
+            }
+          ],
+          icon: 'src-electron/icons/icon.ico'
+        },
+        
+        // NSIS 安装程序配置
+        nsis: {
+          // 安装程序文件名
+          artifactName: '${productName}-Setup-${version}.${ext}',
+          // 一键安装模式（不需要用户选择安装目录）
+          oneClick: false,
+          // 允许用户选择安装目录
+          allowToChangeInstallationDirectory: true,
+          // 创建开始菜单快捷方式
+          createDesktopShortcut: true,
+          // 创建开始菜单项
+          createStartMenuShortcut: true,
+          // 安装完成后运行应用
+          runAfterFinish: true,
+          // 卸载程序名称
+          uninstallDisplayName: '${productName}',
+          // 安装程序语言
+          language: '2052', // 简体中文
+          // 安装向导图标
+          installerIcon: 'src-electron/icons/icon.ico',
+          // 卸载向导图标
+          uninstallerIcon: 'src-electron/icons/icon.ico',
+          // 安装程序头部图标
+          installerHeaderIcon: 'src-electron/icons/icon.ico',
+          // 安装程序侧边栏图片（可选）
+          // installerSidebar: 'build/installer-sidebar.bmp',
+          // 卸载程序侧边栏图片（可选）
+          // uninstallerSidebar: 'build/uninstaller-sidebar.bmp',
+          // 安装程序欢迎页面文本（可选）
+          // include: 'build/installer.nsh',
+          // 自定义安装脚本（可选）
+          // script: 'build/installer.nsh'
+        },
         
         // 额外资源：Python 自动化服务 exe
         extraResources: [

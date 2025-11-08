@@ -46,9 +46,9 @@ export class GeneralSettingsFileService {
       return config
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        console.log('[GeneralSettingsFileService] 通用设置文件不存在，返回默认配置')
-        // 返回默认配置
-        return {
+        console.log('[GeneralSettingsFileService] 通用设置文件不存在，创建默认配置')
+        // 创建默认配置
+        const defaultConfig: GeneralSettingsConfig = {
           closeWindowBehavior: 'minimize-to-tray',
           quickAccessShortcut: 'CommandOrControl+Shift+Q',
           quickAccessAlwaysOnTop: true,
@@ -59,6 +59,14 @@ export class GeneralSettingsFileService {
             height: 700,
           },
         }
+        // 保存默认配置
+        try {
+          await this.saveSettings(defaultConfig)
+          console.log('[GeneralSettingsFileService] 默认配置已保存')
+        } catch (saveError) {
+          console.error('[GeneralSettingsFileService] 保存默认配置失败:', saveError)
+        }
+        return defaultConfig
       }
       console.error('[GeneralSettingsFileService] 加载通用设置失败:', error)
       throw error

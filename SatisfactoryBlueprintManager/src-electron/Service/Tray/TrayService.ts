@@ -2,12 +2,11 @@
  * 托盘服务（Electron 主进程）
  * 负责系统托盘的创建和管理
  */
-import { Tray, Menu, BrowserWindow, nativeImage, app } from 'electron'
+import { Tray, Menu, nativeImage, app } from 'electron'
+import type { BrowserWindow } from 'electron'
 import path from 'path'
-import { fileURLToPath } from 'url'
+import { existsSync } from 'fs'
 import { quickAccessWindowService } from '../QuickAccess/QuickAccessWindowService'
-
-const currentDir = fileURLToPath(new URL('.', import.meta.url))
 
 class TrayService {
   private tray: Tray | null = null
@@ -20,23 +19,26 @@ class TrayService {
     this.mainWindow = mainWindow
 
     // 托盘图标路径（优先使用 icons 目录下的图标，如果没有则使用 favicon.ico）
-    let iconPath: string
-    if (process.env.DEV) {
-      // 开发环境：使用项目根目录的 public 文件夹
-      iconPath = path.resolve(currentDir, '../../../public/icons/favicon-16x16.png')
-    } else {
-      // 生产环境：使用应用资源目录
-      iconPath = path.join(app.getAppPath(), 'public', 'icons', 'favicon-16x16.png')
-    }
+    // 统一使用 app.getAppPath()，Electron 会自动处理开发/生产环境的差异
+    const appPath = app.getAppPath()
+    const iconPath = path.join(appPath, 'public', 'icons', 'favicon-16x16.png')
+    const fallbackPath = path.join(appPath, 'public', 'favicon.ico')
+    
+    // 调试：打印托盘图标路径信息
+    console.log('[TrayService] ========== 托盘图标路径调试 ==========')
+    console.log('[TrayService] app.getAppPath():', appPath)
+    console.log('[TrayService] 主图标路径:', iconPath)
+    console.log('[TrayService] 主图标文件存在:', existsSync(iconPath))
+    console.log('[TrayService] 备用图标路径:', fallbackPath)
+    console.log('[TrayService] 备用图标文件存在:', existsSync(fallbackPath))
+    console.log('[TrayService] ==========================================')
     
     try {
       let icon = nativeImage.createFromPath(iconPath)
       
       // 如果图标加载失败，尝试使用 favicon.ico
       if (icon.isEmpty()) {
-        const fallbackPath = process.env.DEV
-          ? path.resolve(currentDir, '../../../public/favicon.ico')
-          : path.join(app.getAppPath(), 'public', 'favicon.ico')
+        console.log('[TrayService] 主图标加载失败，尝试备用图标')
         icon = nativeImage.createFromPath(fallbackPath)
       }
       
@@ -105,8 +107,15 @@ class TrayService {
       {
         label: '退出程序',
         click: () => {
-          // 强制退出，不触发关闭行为检查
-          app.exit(0)
+          // 从托盘菜单退出时，应该强制关闭所有窗口并退出
+          // 先销毁主窗口（绕过 close 事件的阻止）
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            // 移除 close 事件监听器，避免被阻止
+            this.mainWindow.removeAllListeners('close')
+            this.mainWindow.destroy()
+          }
+          // 然后使用 app.quit() 触发 will-quit 事件进行清理
+          app.quit()
         },
       },
     ])

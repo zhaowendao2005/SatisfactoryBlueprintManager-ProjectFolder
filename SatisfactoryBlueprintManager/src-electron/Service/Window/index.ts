@@ -1,8 +1,6 @@
-import { BrowserWindow, BrowserWindowConstructorOptions } from 'electron'
+import { app, BrowserWindow, BrowserWindowConstructorOptions } from 'electron'
 import path from 'path'
-import { fileURLToPath } from 'url'
-
-const currentDir = fileURLToPath(new URL('.', import.meta.url))
+import { existsSync } from 'fs'
 
 /**
  * 窗口管理服务
@@ -12,19 +10,39 @@ export class WindowService {
    * 创建主窗口
    */
   static async createMainWindow(): Promise<BrowserWindow> {
+    // 调试：打印路径信息
+    const appPath = app.getAppPath()
+    const preloadPath = process.env.QUASAR_ELECTRON_PRELOAD_FOLDER
+      ? path.join(  // 使用 app.getAppPath() 访问 asar 内的文件
+          appPath,
+          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
+          'electron-preload' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
+        )
+      : path.join(appPath, 'electron-preload.cjs')
+    const iconPath = path.join(appPath, 'icons', 'icon.png')
+    
+    console.log('[WindowService] ========== 路径调试信息 ==========')
+    console.log('[WindowService] app.getAppPath():', appPath)
+    console.log('[WindowService] app.isPackaged:', app.isPackaged)
+    console.log('[WindowService] process.resourcesPath:', process.resourcesPath)
+    console.log('[WindowService] QUASAR_ELECTRON_PRELOAD_FOLDER:', process.env.QUASAR_ELECTRON_PRELOAD_FOLDER)
+    console.log('[WindowService] QUASAR_ELECTRON_PRELOAD_EXTENSION:', process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION)
+    console.log('[WindowService] preload 路径:', preloadPath)
+    console.log('[WindowService] preload 文件存在:', existsSync(preloadPath))
+    console.log('[WindowService] icon 路径:', iconPath)
+    console.log('[WindowService] icon 文件存在:', existsSync(iconPath))
+    console.log('[WindowService] ==========================================')
+    
     const windowOptions: BrowserWindowConstructorOptions = {
-      icon: path.resolve(currentDir, '../../icons/icon.png'),
+      icon: iconPath,
       width: 1000,
       height: 600,
       useContentSize: true,
       frame: false, // 使用自定义标题栏
       webPreferences: {
         contextIsolation: true,
-        // QUASAR_ELECTRON_PRELOAD_FOLDER 是绝对路径，直接使用 path.join
-        preload: path.join(
-          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER || '',
-          'electron-preload' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
-        ),
+        // 标准路径方案：开发环境使用 Quasar 环境变量，生产环境使用 app.getAppPath()
+        preload: preloadPath,
       },
     }
 

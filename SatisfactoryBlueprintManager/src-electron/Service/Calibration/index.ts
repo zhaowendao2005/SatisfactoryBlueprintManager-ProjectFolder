@@ -2,15 +2,11 @@
  * 坐标标定服务
  * @注意事项 单例模式，同一时间仅允许一个标定流程
  */
-import { BrowserWindow, screen, ipcMain } from 'electron'
+import { app, BrowserWindow, screen, ipcMain } from 'electron'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import type { CalibrationResult, CalibrationType } from '../../../public/types/automation-config/calibration'
 import { captureAllScreens } from './ScreenCapture'
 import { getOverlayHTML } from './OverlayTemplate'
-
-// 当前目录（用于 preload 路径的 fallback）
-const currentDir = fileURLToPath(new URL('.', import.meta.url))
 
 /**
  * 用户取消标定错误
@@ -142,10 +138,14 @@ export class CalibrationService {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        preload: path.join(
-          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER || currentDir,
-          'overlay' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
-        ),
+        // 标准路径方案：使用 app.getAppPath() 访问 asar 内的文件
+        preload: process.env.QUASAR_ELECTRON_PRELOAD_FOLDER
+          ? path.join(  // 开发环境：使用 Quasar 环境变量
+              app.getAppPath(),
+              process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
+              'overlay' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
+            )
+          : path.join(app.getAppPath(), 'Preload', 'overlay.cjs'), // 生产环境：从 app.asar 加载
       },
     })
 
