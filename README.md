@@ -150,9 +150,3 @@ npm run format
 
 - [zhaowendao2005](https://github.com/zhaowendao2005)
 
----
-
-**享受更高效的蓝图管理体验！** 🎮✨
-```
-
-Boss，已根据你的文档草拟了 README。需要我直接更新到项目文件吗？如需调整，告诉我即可。
