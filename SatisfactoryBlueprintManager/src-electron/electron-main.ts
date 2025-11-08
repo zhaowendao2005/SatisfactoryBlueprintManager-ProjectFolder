@@ -68,6 +68,7 @@ async function createWindow(): Promise<void> {
   mainWindow.on('closed', () => {
     mainWindow = undefined
     shortcutService.setMainWindow(null)
+    trayService.updateMainWindow(null) // 清理托盘服务的窗口引用
   })
 }
 
@@ -89,12 +90,14 @@ void app.whenReady().then(async () => {
 })
 
 /**
- * 所有窗口关闭时退出应用（macOS 除外）
+ * 所有窗口关闭时的处理
+ * 托盘应用模式：窗口关闭不退出，只有从托盘菜单选择"退出"才真正退出
  */
 app.on('window-all-closed', () => {
-  if (platform !== 'darwin') {
-    app.quit()
-  }
+  // macOS: 通常保持应用运行
+  // Windows/Linux: 托盘应用也应保持运行
+  console.log('[Main] 所有窗口已关闭，应用保持运行（托盘模式）')
+  // 不调用 app.quit()，让应用继续在后台运行
 })
 
 /**

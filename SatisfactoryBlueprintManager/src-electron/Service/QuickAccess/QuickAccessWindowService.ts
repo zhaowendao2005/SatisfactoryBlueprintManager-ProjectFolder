@@ -62,15 +62,17 @@ class QuickAccessWindowService {
 
     // 调试：快速访问窗口 preload 路径
     const appPath = app.getAppPath()
-    const preloadPath = process.env.QUASAR_ELECTRON_PRELOAD_FOLDER
-      ? path.join(  // 使用 app.getAppPath() 访问 asar 内的文件
-          appPath,
-          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
+    // 开发环境：Quasar 已设置正确的绝对路径，直接 resolve
+    // 生产环境：从 app.asar 加载
+    const preloadPath = process.env.DEV
+      ? path.resolve(
+          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER || '',
           'electron-preload' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
         )
-      : path.join(appPath, 'electron-preload.cjs')
+      : path.join(appPath, 'preload', 'electron-preload.cjs')
     
     console.log('[QuickAccessWindowService] ========== 快速访问窗口路径调试 ==========')
+    console.log('[QuickAccessWindowService] process.env.DEV:', process.env.DEV)
     console.log('[QuickAccessWindowService] preload 路径:', preloadPath)
     console.log('[QuickAccessWindowService] preload 文件存在:', existsSync(preloadPath))
     console.log('[QuickAccessWindowService] ==========================================')
@@ -311,7 +313,11 @@ class QuickAccessWindowService {
    * 销毁窗口
    */
   destroy(): void {
-    if (this.quickAccessWindow) {
+    if (this.quickAccessWindow && !this.quickAccessWindow.isDestroyed()) {
+      // 先移除所有监听器，避免 close 事件干扰
+      this.quickAccessWindow.removeAllListeners('close')
+      this.quickAccessWindow.removeAllListeners('moved')
+      this.quickAccessWindow.removeAllListeners('resized')
       this.quickAccessWindow.destroy()
       this.quickAccessWindow = null
       console.log('[QuickAccessWindowService] 快速访问窗口已销毁')

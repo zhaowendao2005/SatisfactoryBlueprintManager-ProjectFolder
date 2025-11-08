@@ -138,14 +138,14 @@ export class CalibrationService {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        // 标准路径方案：使用 app.getAppPath() 访问 asar 内的文件
-        preload: process.env.QUASAR_ELECTRON_PRELOAD_FOLDER
-          ? path.join(  // 开发环境：使用 Quasar 环境变量
-              app.getAppPath(),
-              process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
-              'overlay' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
+        // 开发环境：Quasar 已设置正确的绝对路径，直接 resolve
+        // 生产环境：从 app.asar 加载
+        preload: process.env.DEV
+          ? path.resolve(
+              process.env.QUASAR_ELECTRON_PRELOAD_FOLDER || '',
+          'overlay' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
             )
-          : path.join(app.getAppPath(), 'Preload', 'overlay.cjs'), // 生产环境：从 app.asar 加载
+          : path.join(app.getAppPath(), 'Preload', 'overlay.cjs'),
       },
     })
 

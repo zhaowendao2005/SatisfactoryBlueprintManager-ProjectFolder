@@ -12,16 +12,18 @@ export class WindowService {
   static async createMainWindow(): Promise<BrowserWindow> {
     // 调试：打印路径信息
     const appPath = app.getAppPath()
-    const preloadPath = process.env.QUASAR_ELECTRON_PRELOAD_FOLDER
-      ? path.join(  // 使用 app.getAppPath() 访问 asar 内的文件
-          appPath,
-          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
+    // 开发环境：Quasar 已设置正确的绝对路径，直接 resolve
+    // 生产环境：从 app.asar 加载
+    const preloadPath = process.env.DEV
+      ? path.resolve(
+          process.env.QUASAR_ELECTRON_PRELOAD_FOLDER || '',
           'electron-preload' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
         )
-      : path.join(appPath, 'electron-preload.cjs')
+      : path.join(appPath, 'preload', 'electron-preload.cjs')
     const iconPath = path.join(appPath, 'icons', 'icon.png')
     
     console.log('[WindowService] ========== 路径调试信息 ==========')
+    console.log('[WindowService] process.env.DEV:', process.env.DEV)
     console.log('[WindowService] app.getAppPath():', appPath)
     console.log('[WindowService] app.isPackaged:', app.isPackaged)
     console.log('[WindowService] process.resourcesPath:', process.resourcesPath)

@@ -108,13 +108,21 @@ class TrayService {
         label: '退出程序',
         click: () => {
           // 从托盘菜单退出时，应该强制关闭所有窗口并退出
-          // 先销毁主窗口（绕过 close 事件的阻止）
+          console.log('[TrayService] 用户点击退出程序，开始清理...')
+          
+          // 1. 销毁主窗口（绕过 close 事件的阻止）
           if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-            // 移除 close 事件监听器，避免被阻止
             this.mainWindow.removeAllListeners('close')
             this.mainWindow.destroy()
+            console.log('[TrayService] 主窗口已销毁')
           }
-          // 然后使用 app.quit() 触发 will-quit 事件进行清理
+          
+          // 2. 销毁快速访问窗口（关键：避免其 close 监听器阻止 app.quit）
+          quickAccessWindowService.destroy()
+          console.log('[TrayService] 快速访问窗口已销毁')
+          
+          // 3. 现在所有窗口都已销毁，app.quit() 可以正常触发 will-quit
+          console.log('[TrayService] 调用 app.quit()')
           app.quit()
         },
       },
@@ -127,12 +135,14 @@ class TrayService {
    * 显示窗口
    */
   showWindow(): void {
-    if (this.mainWindow) {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (this.mainWindow.isMinimized()) {
         this.mainWindow.restore()
       }
       this.mainWindow.show()
       this.mainWindow.focus()
+    } else {
+      console.error('[TrayService] 主窗口不可用或已被销毁，无法显示')
     }
   }
 
@@ -140,9 +150,18 @@ class TrayService {
    * 隐藏窗口
    */
   hideWindow(): void {
-    if (this.mainWindow) {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.hide()
+    } else {
+      console.error('[TrayService] 主窗口不可用或已被销毁，无法隐藏')
     }
+  }
+
+  /**
+   * 更新主窗口引用
+   */
+  updateMainWindow(mainWindow: BrowserWindow | null): void {
+    this.mainWindow = mainWindow
   }
 
   /**
@@ -154,6 +173,7 @@ class TrayService {
       this.tray = null
       console.log('[TrayService] 托盘已销毁')
     }
+    this.mainWindow = null
   }
 }
 
