@@ -145,7 +145,7 @@ export class CalibrationService {
               process.env.QUASAR_ELECTRON_PRELOAD_FOLDER || '',
           'overlay' + (process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION || '.cjs')
             )
-          : path.join(app.getAppPath(), 'Preload', 'overlay.cjs'),
+          : path.join(app.getAppPath(), 'preload', 'overlay.cjs'),
       },
     })
 
