@@ -285,7 +285,7 @@ export default configure((ctx) => {
               arch: ['x64']
             }
           ],
-          icon: 'src-electron/icons/icon.ico'
+          icon: 'public/icons/favicon-256x256.ico'
         },
         
         // NSIS 安装程序配置
@@ -307,11 +307,11 @@ export default configure((ctx) => {
           // 安装程序语言
           language: '2052', // 简体中文
           // 安装向导图标
-          installerIcon: 'src-electron/icons/icon.ico',
+          installerIcon: 'public/icons/favicon-256x256.ico',
           // 卸载向导图标
-          uninstallerIcon: 'src-electron/icons/icon.ico',
+          uninstallerIcon: 'public/icons/favicon-256x256.ico',
           // 安装程序头部图标
-          installerHeaderIcon: 'src-electron/icons/icon.ico',
+          installerHeaderIcon: 'public/icons/favicon-256x256.ico',
           // 安装程序侧边栏图片（可选）
           // installerSidebar: 'build/installer-sidebar.bmp',
           // 卸载程序侧边栏图片（可选）
