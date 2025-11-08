@@ -43,13 +43,42 @@ watch(
 
 onMounted(async () => {
   try {
-    // 初始化加载数据
-    await Promise.all([
-      blueprintSourceStore.loadRootNodes(),
-      activeBlueprintStore.initializeConfig(), // 初始化配置（会加载配置列表和上次的配置）
-      globalTagsStore.initializeGlobalTags(), // 初始化全局标签
-      syncConfigStore.loadConfig(), // 加载同步配置
-    ])
+    // 检查是否已经有数据（从 layout.vue 的预加载）
+    const hasConfig = activeBlueprintStore.currentConfigId !== null
+    const hasRootNodes = blueprintSourceStore.rootNodes.length > 0
+    const hasTags = globalTagsStore.tags.length > 0
+
+    console.log('[Blueprint] 检查预加载状态:', { hasConfig, hasRootNodes, hasTags })
+
+    // 只加载尚未加载的数据
+    const tasks = []
+    
+    if (!hasRootNodes) {
+      console.log('[Blueprint] 加载蓝图源...')
+      tasks.push(blueprintSourceStore.loadRootNodes())
+    }
+    
+    if (!hasConfig) {
+      console.log('[Blueprint] 加载配置...')
+      tasks.push(activeBlueprintStore.initializeConfig())
+    }
+    
+    if (!hasTags) {
+      console.log('[Blueprint] 加载全局标签...')
+      tasks.push(globalTagsStore.initializeGlobalTags())
+    }
+    
+    // 同步配置总是需要加载
+    tasks.push(syncConfigStore.loadConfig())
+
+    if (tasks.length > 0) {
+      await Promise.all(tasks)
+      console.log('[Blueprint] 补充加载完成')
+    } else {
+      console.log('[Blueprint] 所有数据已预加载，跳过重复加载')
+      // 仍然需要加载同步配置
+      await syncConfigStore.loadConfig()
+    }
   } catch (error) {
     console.error('Failed to initialize Blueprint module:', error)
   }
